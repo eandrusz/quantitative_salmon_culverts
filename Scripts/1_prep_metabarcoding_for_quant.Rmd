@@ -32,6 +32,12 @@ ASV.table <- read_csv(here("Input", "metabarcoding", "combined.MiFish.ASV.table.
 annotations <- readRDS(here("Input", "metabarcoding","MiFish.all.previous.hashes.annotated.rds"))
 metadata <- read.csv(here("Input", "metabarcoding", "all_mifish_metadata.csv"))
 
+# remove any samples that were sequenced that are not part of this project
+ASV.table <- ASV.table %>% 
+  filter(Sample_name %in% metadata$Sample_ID)
+
+missing <- setdiff(metadata$Sample_ID, ASV.table$Sample_name)
+
 ```
 
 ## Pair hashes with taxonomy 
@@ -79,23 +85,32 @@ check <- setdiff(annotated.asvs, unique(annotated.reads$Hash))
 # we knew this but good to double check 
 
 ```
+Ok enough messing around. Let's put the taxonomy on ASVs and then collapse all ASVs that assign to the same taxon. Actually, we really are only going to look at species level assignments. So we can collapse to species and see how many reads/ASVs are assigned to species level. 
 
-```{r}
+```{r merge asvs and taxonomy}
 
 # this taxonomy file is the "good" annotations to species and genus level so let's get rid of the other junk for right now 
-MiFish.simple.annotations <- MiFish.annotations %>% 
-  select(representative, class, taxon, species) %>% 
+simple.annotations <- annotations %>% 
+  dplyr::select(representative, taxon, species) %>% 
   rename(Hash = representative)
 
-MiFish.ASV.taxon <- MiFish.ASV.table %>% 
-  left_join(MiFish.simple.annotations, by = "Hash") %>% 
-  select(-Locus)
+ASV.taxon <- ASV.table %>% 
+  left_join(simple.annotations, by = "Hash") %>% 
+  group_by(Sample_name, taxon) %>% # for each sample that has multiple asvs that assign to the same taxa...
+  summarise(tot = sum(nReads)) 
 
 # we can also do this at the species level 
-MiFish.by.species <- MiFish.ASV.taxon %>% 
-  select(-Hash) %>% # we don't need the hash identifier anymore
+species.table <- ASV.table %>% 
+  left_join(simple.annotations, by = "Hash") %>% 
   filter(species != "") %>% 
-  group_by(Sample_name, class, species) %>% # for each sample that has multiple asvs that assign to the same taxa...
-  summarise(tot = sum(nReads))
+  group_by(Sample_name, species) %>% # for each sample that has multiple asvs that assign to the same taxa...
+  summarise(tot = sum(nReads)) 
+
+species.padden.clarkii <- species.table %>% 
+  filter(str_detect(Sample_name, "4Pad")) %>% 
+  filter(str_detect(species, "Oncorhynchus clarkii")) %>% 
+  rename(Sample_ID = Sample_name) %>% 
+  left_join(metadata, by = "Sample_ID")
+
 
 ```
