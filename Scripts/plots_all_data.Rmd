@@ -1,0 +1,68 @@
+---
+title: "plots_all_data"
+author: "Eily Allan"
+date: "6/8/2022"
+output: html_document
+---
+
+This script is meant to plot anything that we can in terms of quantitative data, measured or derived, from all the different stages of sample processing. That is: extract total DNA concentration, MiFish amplicon DNA concentrations, single species qPCR concentrations, sequencing reads, etc. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+library(tidyverse)
+library(clock)
+library(ggplot2)
+```
+
+## Import all kinds of fun data
+
+```{r import data}
+extracts <- read.csv(here("Input","extract_qubits.csv"))
+meta_metadata <- read.csv(here("Input","all_mifish_metadata.csv"))
+meta_postpcr1 <- read.csv(here("Input","metabarcoding","post_pcr1_qubit.csv"))
+qpcr_meta <- read.csv(here("Input","qpcr","qpcr.dilutions.csv"))
+qpcr_data <- read.csv(here("Input","qpcr","cutthroat_qpcr_results.csv"))
+
+```
+
+## Start with DNA extracts - total DNA
+
+```{r total DNA in extract}
+
+extracts <- extracts %>% 
+  mutate(date=date_build(year,month)) %>% 
+  mutate(., qubit.ng.ul = case_when(qubit.ng.ul == "BLOQ" ~ "0",
+                                    qubit.ng.ul == "BLOQ*" ~ "0",
+                             TRUE ~ qubit.ng.ul)) 
+
+extracts$qubit.ng.ul <- as.numeric(extracts$qubit.ng.ul)
+  
+extracts %>% 
+  filter(!str_detect(creek, "EB")) %>%
+  ggplot() +
+  geom_point(aes(x = date, y = qubit.ng.ul, color=factor(location))) +
+  facet_wrap(~creek, ncol=5) +
+  scale_color_viridis_d() +
+  theme_bw() +  
+  labs(y = "Total DNA (ng/uL extract)", x = "Date", color = "Sampling Location") + 
+  theme(axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8, angle = 45, hjust=1))
+
+```
+
+```{r pcr post pcr1}
+
+meta_postpcr1 %>% 
+  #filter(!str_detect(creek, "EB")) %>%
+  ggplot() +
+  geom_point(aes(x = Month, y = Qubit.ng.ul, color=factor(Station))) +
+  facet_wrap(~Creek) +
+  scale_color_viridis_d() +
+  theme_bw() +  
+  labs(y = "MiFish DNA (ng/uL amplicon)", x = "Date", color = "Sampling Location") + 
+  theme(axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8, angle = 45, hjust=1))
+
+```
