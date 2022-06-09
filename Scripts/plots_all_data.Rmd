@@ -22,6 +22,7 @@ library(ggplot2)
 extracts <- read.csv(here("Input","extract_qubits.csv"))
 meta_metadata <- read.csv(here("Input","all_mifish_metadata.csv"))
 meta_postpcr1 <- read.csv(here("Input","metabarcoding","post_pcr1_qubit.csv"))
+meta_postpcr2 <- read.csv(here("Input","metabarcoding","post_pcr1_qubit.csv"))
 qpcr_meta <- read.csv(here("Input","qpcr","qpcr.dilutions.csv"))
 qpcr_data <- read.csv(here("Input","qpcr","cutthroat_qpcr_results.csv"))
 

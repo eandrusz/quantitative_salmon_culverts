@@ -1,0 +1,215 @@
+---
+title: "explore_metabarcoding.Rmd"
+author: "Eily Allan"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+Script started: 6/2/22
+Script last updated: 6/9/22
+
+# Overview
+
+Here, we will take the combined ASV table and it with taxonomy -  we will also collapse to different taxonomic ranks depending on what types of analyses we want to do. 
+
+# Set up
+
+## Load libraries
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+library(vegan)
+library(reshape2)
+```
+
+## Read in files 
+We will have three files: the ASV table (sample, hash, number of reads), the annotations (hash, taxonomy), and the metadata file (sample, associated metadata).
+
+```{r read in files}
+
+ASV.table <- read_csv(here("Input", "metabarcoding", "combined.MiFish.ASV.table.csv"))
+annotations <- readRDS(here("Input", "metabarcoding","MiFish.all.previous.hashes.annotated.rds"))
+metadata <- read.csv(here("Input", "metabarcoding", "all_mifish_metadata.csv"))
+
+# remove any samples that were sequenced that are not part of this project
+ASV.table <- ASV.table %>% 
+  filter(Sample_name %in% metadata$Sample_ID)
+
+missing <- setdiff(metadata$Sample_ID, ASV.table$Sample_name)
+
+```
+
+## Pair hashes with taxonomy 
+We want to have a table that is sample and taxonomy. 
+
+But first let's see the taxonomic resolution of our annotations. 
+
+```{r taxonomic resolution}
+
+# see how many were not assigned a rank
+annotations %>% dplyr::count (rank) %>% arrange(desc(n))
+
+specieslevel <- annotations %>% 
+  filter(species !="")
+
+```
+
+So 61 of our 114 hashes annotated are to species level. Let's see how many reads that corresponds to in our full dataset. 
+
+```{r reads and taxonomic resolution}
+total.reads <- sum(ASV.table$nReads)
+# we are working with 30,354,877 reads total - WOW
+
+total.asvs <- length(unique(ASV.table$Hash))
+# and those 30M reads come from 20,116 ASVs 
+
+annotated.asvs <- intersect(annotations$representative, ASV.table$Hash)
+# 91 ASVs that were found in our environmental samples were annotated to something (any taxonomic level)
+# reminder that the big key of annotations here also includes some other samples (mock communities) - usually this would be weird that there are 114 annotations and so therefore some annotations are not used - but here the key is bigger than the dataset we are applying (the actual creek samples)
+# another reminder that before we annotated, we removed any ASVs longer than 200 bp
+
+annotated.asvs.not.used <- annotations %>% filter(representative %in% setdiff(annotations$representative, setdiff(annotations$representative, ASV.table$Hash)))
+# just to double check what these actually are
+
+ASV.table %>% filter(Hash %in% setdiff(annotations$representative, ASV.table$Hash))
+# and triple checking that none of the samples have these ASVs
+
+annotated.reads <- ASV.table %>% 
+  filter(Hash %in% annotations$representative) 
+
+total.annotated.reads <- sum(annotated.reads$nReads)
+# great - 22,967,816 reads are annotated - these come from the 91 annotated ASVs in the dataset 
+
+check <- setdiff(annotated.asvs, unique(annotated.reads$Hash))
+# we knew this but good to double check 
+
+```
+Ok enough messing around. Let's put the taxonomy on ASVs and then collapse all ASVs that assign to the same taxon. Actually, we really are only going to look at species level assignments. So we can collapse to species and see how many reads/ASVs are assigned to species level. 
+
+```{r merge asvs and taxonomy}
+
+# this taxonomy file is the "good" annotations to species and genus level so let's get rid of the other junk for right now 
+simple.annotations <- annotations %>% 
+  dplyr::select(representative, taxon, species) %>% 
+  rename(Hash = representative)
+
+ASV.taxon <- ASV.table %>% 
+  left_join(simple.annotations, by = "Hash") %>% 
+  group_by(Sample_name, taxon) %>% # for each sample that has multiple asvs that assign to the same taxa...
+  summarise(tot = sum(nReads)) 
+
+# we can also do this at the species level 
+species.table <- ASV.table %>% 
+  left_join(simple.annotations, by = "Hash") %>% 
+  filter(species != "") %>% 
+  group_by(Sample_name, species) %>% # for each sample that has multiple asvs that assign to the same taxa...
+  summarise(tot = sum(nReads)) 
+
+total.annotated.species.reads <- sum(species.table$tot)
+
+species.table.no.kangaroo <- species.table %>% 
+  filter(!str_detect(Sample_name, "Kangaroo"))
+
+mostcommonspecies <- species.table.no.kangaroo %>% 
+  group_by(species) %>% 
+  summarize(species.total = sum(tot))
+
+```
+
+Let's try to make a nice summary plot of presence absence in creeks over time 
+
+```{r summary plot}
+summary.df <- species.table.no.kangaroo %>% 
+  separate(Sample_name, into=c("marker","date","creek","site","bio_rep"), remove = TRUE) %>%
+  mutate(., date = case_when(date == "0321" ~ "21-03",
+                             date == "0421" ~ "21-04",
+                             date == "0521" ~ "21-05",
+                             date == "0621" ~ "21-06",
+                             date == "0721" ~ "21-07",
+                             date == "0821" ~ "21-08",
+                             date == "0921" ~ "21-09",
+                             date == "1021" ~ "21-10",
+                             date == "1121" ~ "21-11",
+                             date == "1221" ~ "21-12",
+                             date == "0122" ~ "22-01",
+                             date == "0222" ~ "22-02",
+                             TRUE ~ date)) %>% 
+  mutate(., creek = case_when(creek == "1Prt" ~ "Portage Creek",
+                             creek == "2Brn" ~ "Barnes Creek",
+                             creek == "3Chk" ~ "Chuckanut Creek",
+                             creek == "4Pad" ~ "Padden Creek",
+                             creek == "5Sqm" ~ "Squalicum Creek",
+                             TRUE ~ creek)) %>% 
+  dplyr::select(date, creek, site, species)
+
+ggplot(summary.df, aes(date, species, width=0.7, height=0.7)) + 
+  geom_tile(size=2) +
+  facet_wrap(~creek) +
+  theme_bw() +
+  labs(x = "Taxon", y = "Sample ID", fill="Upstream index - Downstream index") +
+  ggtitle("MiFish - Salmonids - Difference in Upstream/Downstream eDNA Index") +
+  scale_fill_distiller(palette = "RdBu") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+summary.df %>% 
+  left_join(annotations, by = "species") %>% 
+  #mutate(species = fct_reorder(species, desc(order))) %>%
+  ggplot(aes(x = date, y = species, color = class)) +
+  geom_point(shape=20, aes(size = 4))  +
+  facet_wrap( ~ creek , ncol = 5) + 
+  theme_bw() +  
+  labs(y = "", x = "", color = "Class") + 
+  scale_color_brewer(palette = "Dark2")+
+  guides(size = "none", color = guide_legend(override.aes = list(size = 9))) + 
+  theme(axis.text.y = element_text(size = 8, face="italic"),
+        axis.text.x = element_text(size = 8, angle = 45, hjust=1),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+ggsave(here("Output","Figures","species_by_creek.png"), width=12, height=7)
+```
+
+Do that again but just for fish 
+
+```{r summary fish}
+fish.summary.df <- summary.df %>% 
+  left_join(annotations, by = "species") %>% 
+  filter(class == "Actinopteri")
+
+fish.summary.df %>% 
+  ggplot(aes(x = date, y = species, color = family)) +
+  geom_point(shape=20, aes(size = 4))  +
+  facet_wrap( ~ creek , ncol = 5) + 
+  theme_bw() +  
+  labs(y = "", x = "", color = "Family") + 
+  #scale_color_brewer(palette = "Dark2")+
+  guides(size = "none", color = guide_legend(override.aes = list(size = 9))) + 
+  theme(axis.text.y = element_text(size = 8, face="italic"),
+        axis.text.x = element_text(size = 8, angle = 45, hjust=1),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+ggsave(here("Output","Figures","fish_species_by_creek.png"), width=12, height=7)
+
+
+```
+
+```{r cutthroat only}
+
+species.padden.clarkii <- species.table %>% 
+  filter(str_detect(Sample_name, "4Pad")) %>% 
+  filter(str_detect(species, "Oncorhynchus clarkii")) %>% 
+  rename(Sample_ID = Sample_name) %>% 
+  left_join(metadata, by = "Sample_ID")
+
+ggplot(species.padden.clarkii, aes(x=Month.year, y=tot)) +
+  geom_point(size=4) +
+  theme_bw() +
+  facet_wrap(~Station) +
+  labs(x="Month",y="# of reads") +
+  ggtitle('Cutthroat Reads')
+
+
+```

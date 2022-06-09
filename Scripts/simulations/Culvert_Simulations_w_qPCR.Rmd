@@ -1,0 +1,543 @@
+---
+title: "Culvert Simulations"
+author: "Kelly"
+date: "3/31/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(MCMCpack) #for rdirichelet function
+library(rstan)
+library(shinystan)
+library(bayesplot)
+library(here)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+
+source(here("simFunctions.R")) #functions to generate communities and observations of those communities
+
+```
+
+## The Goal
+
+We want a robust way of simulating metabarcoding data that mirrors the experimental setup in the NextGen NEPA project. This allows us to estimate our power to detect differences in the ecological communities we are sampling, and to play out different hypothetical scenarios as we choose. Simulations allow us to manage our expectations and probe the possibilities of analysis.
+
+Here, the computation happens through a set of linked functions and scripts, which live in the files `simFunctions.R` (generating functions), `Metabarcoding_make_design_files.R` (data-wrangling; largely Ole's and Alex Jensen's code from the quant metabarcoding project), and the quant metabarcoding model itself (`quant_metabar_multinom_NGN.stan`).  We then simulate a qPCR assay, calculating absolute concentrations for one reference species using `qPCR_calibration.stan` and use the observations from that assay to estimate absolute concentrations for the many species observed in the metabarcoding results.
+
+## Process Model
+
+The first function is a biological process model (`SimCommunityProcess()`), setting up the imagined biological world we are sampling. We can specify number of species, number of sampled creeks, number of time points, etc., as arguments to the function. More detailed tweaks are fairly easy by changing decisions hard-coded into the function code itself. The units being modeled here can be thought of as individual organisms, or equivalently, as individual molecules -- for example, there may be 2300 individuals observed for species 1 in the downstream site of creek 1 at time 1, and whether we think of these units as whole organisms or molecules doesn't actually matter.
+
+Built into this function is the sampling design in which we are sampling above and below a culvert on each creek at each time point. The culvert has a (randomly assigned) effect that is consistent within each species.
+
+There is stochasticity built in at various points: the mean organismal abundance (for a species at a given time) across creeks is a multinomial draw from the total individuals present, for example, and biological replicates are drawn from a Poisson distribution.
+
+The process model generates temporal trends (for each species), drawing from four possible trends (increasing, decreasing, random, or sinusoidal), and the magnitudes of each of these trends is also assigned stochastically.
+
+```{r Process Model}
+SEED = 2118
+NSpecies = 5
+Nt = 1  #number of time points we want to sample, for each species in each creek.
+
+#simulate numbers of organisms, or equivalently, molecules
+Process <- SimCommunityProcess(Nspp = NSpecies, 
+                               Ncreek = 1,
+                               Nbiol = 3, #N biological replicates
+                               Nt = Nt,  #N time points
+                               Seed = SEED)
+```
+
+```{r Illustration of Process}
+
+# temporal trend across creeks, also showing culvert effect
+      Process %>%
+        ungroup() %>%
+        rename(species = i, time = t, creek = j, biol = k, downstream = lambda) %>%
+        pivot_longer(c(downstream, upstream), names_to = "site", values_to = "count") %>%
+        filter(species %in% c(1,2,3)) %>%
+        ggplot(aes(x = time, y = count, color = site)) +
+          geom_point() +
+          geom_smooth(se = F) +
+          facet_wrap(creek~species, scale = "free")
+
+
+# the effect of culvert across all times
+      Process %>%
+        ungroup() %>%
+        rename(species = i, time = t, creek = j, biol = k, downstream = lambda) %>%
+        pivot_longer(c(downstream, upstream), names_to = "site", values_to = "count") %>%
+        filter(species %in% c(1,2,3)) %>%
+        ggplot(aes(x = creek, y = count, color = site)) +
+          geom_point() +
+          facet_wrap(~species, scale = "free")
+```
+
+## Observation Model
+
+Given the underlying biological process that is happening in our simulated world (`Process`, above), we then observe that process in a pretty convoluted way: by sampling/extraction/PCR/sequencing. 
+
+Our observation model (`SimCommunityObservation()`) is the now-familiar PCR mechanism with species-specific amplification terms. Arguments to this function include specifications for number of technical replicates, total reads-per-sample, variability among technical replicates (Poisson or Negative Binomial), and so on. 
+
+The function produces both a dataframe of (simulated) observations of sequence-reads, and a (simulated) set of sequences from a mock community for estimating amplification efficiences, just as we are doing in real life.
+
+```{r Observation Model}
+Observation <- SimCommunityObservation(processOutput = Process, 
+                                       Seed = SEED,
+                                       AmpliconDistrib = "NegativeBinomial")
+
+```
+
+```{r Illustration of Observations}
+    Observation$Observation %>%
+      filter(species %in% c(1,2,3)) %>%
+        ggplot(aes(x = time, y = Nreads, color = site)) +
+          geom_point() +
+          geom_smooth(se = F) +
+          facet_wrap(creek~species, scale = "free")
+
+    Observation$Observation %>%
+          filter(species %in% c(1,2,3)) %>%
+            ggplot(aes(x = creek, y = Nreads, color = site)) +
+              geom_point() +
+              facet_wrap(~species, scale = "free")
+```
+
+## Estimating DNA Proportions and Concentrations, Given Observations
+
+We then have a simulated world in which we know the true underlying dynamics of the species, and in which we have a set of observations very much like our real-life metabarcoding observations. We wish to estimate the process, given the observations. 
+
+We do this by fitting our quantitative metabarcoding model to the observations, using our simulated mock community for calibration. This gives us posterior estimates of the starting proportions of DNA, before PCR, in the creeks. 
+
+We can then go from proportions to absolute quantities of DNA if we know either the absolute abundance of amplicon for any one of the species present, or alternatively, for the sum of all species present. We can do this with qPCR or internal calibration or other methods. 
+
+Once we have absolute abundances, we can look at the change (for each species) associated with the culverts. It is this change due to culverts that is our outcome variable of interest. 
+
+```{r qPCR calibrations setup}
+copies2ct <- function(copies){
+  #can play w the slope here, or make a variable, but this is something like efficiency alpha = 0.92
+  return(
+  -3.52*log(copies, base = 10) + 40 + 
+  rnorm(length(copies), 0, .2) #noise
+  )
+}
+
+stdCurve <- expand.grid(
+  std_curve_copies = c(1e2, 1e3, 1e4, 1e5, 1e6),
+  replicate = 1:3
+)
+stdCurve$y_std_ct <- copies2ct(stdCurve$std_curve_copies)
+
+#simulate qPCR environmental samples
+envir_qPCR <- Process %>% 
+  filter(i == 1) %>%  #use species 1 as qPCR reference species
+  dplyr::select(t, j, k, lambda, upstream) %>% 
+  pivot_longer(-c(t,j,k)) %>% 
+  unite(t,j,k,name, col = "tjk") %>% 
+  mutate(BiolSample_idx = match(tjk, unique(tjk))) %>% 
+  expand_grid(tech_rep = 1:3) 
+envir_qPCR$y_ct = copies2ct(
+  envir_qPCR$value * (1 + rnorm(nrow(envir_qPCR),0,.1)) #noise in DNA concentration relative to fish concentration
+  ) 
+
+stan_data <- list()
+#add qPCR std curve
+  stan_data$N_std_curve <- length(stdCurve$y_std_ct)
+  stan_data$N_std_samples <- 5 #note hard-coded; this is dumb
+  stan_data$std_sample_idx <- match(stdCurve$std_curve_copies, unique(stdCurve$std_curve_copies)) #note, assumes single array of dilutions
+  stan_data$known_concentration <- unique(stdCurve$std_curve_copies)
+  stan_data$y_ct_std_curve <- stdCurve$y_std_ct
+
+#add qPCR from envir samples
+  stan_data$N_qPCR_envir <- nrow(envir_qPCR)
+  stan_data$N_biol_estimates <- length(unique(envir_qPCR$BiolSample_idx))
+  stan_data$sp_idx_qPCR <- rep(1, stan_data$N_biol_estimates)
+  stan_data$obs_samp_idx <- match(envir_qPCR$BiolSample_idx, unique(envir_qPCR$BiolSample_idx))
+  stan_data$obs_samp_small_idx <- unique(envir_qPCR$BiolSample_idx)
+  stan_data$y_ct_envir <- envir_qPCR$y_ct
+
+```
+
+
+qPCR calibration and estimating absolute concentrations from enviro samples using qPCR.
+
+```{r fit qPCR calibration model and estimate concentration of enviro samples, results='hide'}
+
+      # M <- stan_model(file=here("qPCR_calibration.stan"))
+      # stanOpt <- optimizing(M, data=stan_data, iter=30000,draws=0,
+      #                       verbose=T,
+      #                       #init=stan_init_f4(N_species=stan_data$N_species, Observation),
+      #                       tol_param=1e-15,
+      #                       algorithm="LBFGS")
+      # stanOpt$par[grep("beta_std_curve_1", names(stanOpt$par))]
+      # stanOpt$par[grep("beta_std_curve_0", names(stanOpt$par))]
+      # stanOpt$par[grep("mu_std_curve", names(stanOpt$par))]
+      # stanOpt$par[grep("sigma_std_curve", names(stanOpt$par))]
+      # stanOpt$par[grep("sigma_envir_qPCR", names(stanOpt$par))]
+      # stanOpt$par[grep("mu_qPCR_envir", names(stanOpt$par))]
+      # stanOpt$par[grep("envir_concentration", names(stanOpt$par))]
+
+qMod = stan(file = here("qPCR_calibration.stan") ,data = stan_data,
+                     verbose = FALSE, chains = 3, thin = 1,
+                     warmup = 500, iter = 1000,
+                     control = list(adapt_init_buffer = 175,
+                                    max_treedepth=12,
+                                    stepsize=0.01,
+                                    adapt_delta=0.7,
+                                    metric="diag_e"),
+                     #pars = stan_pars,
+                     refresh = 10,
+                     boost_lib = NULL,
+                     #init = stan_init_f2(n.chain=N_CHAIN,N_species=N_species),
+                     sample_file = "temp/tmp.csv"
+      )
+
+#plot(qMod, par = c("beta_std_curve_1", "sigma_std_curve", "sigma_envir_qPCR"))
+# launch_shinystan(qMod)
+```
+
+Does the qPCR fit generally reflect the species' abundances in the underlying Process model?
+
+```{r plot qPCR fit}
+envir_qPCR %>%
+  filter(tech_rep == 1) %>%
+  mutate(bayes_est = 10^(summary(qMod, par = "envir_concentration")$summary[,1])) %>%
+         # ML_est = stanOpt$par[grep("envir_concentration", names(stanOpt$par))]) %>%
+  ggplot(aes(x = value, y = bayes_est)) +
+    geom_point() +
+    geom_abline(slope = 1)
+
+results_qPCR <- envir_qPCR %>% 
+  filter(tech_rep == 1) %>%
+  mutate(species = 1) %>% 
+  mutate(bayes_est = 10^(summary(qMod, par = "envir_concentration")$summary[,1])) %>% 
+  dplyr::select(-c(tech_rep, y_ct))
+```
+
+
+```{r ML Estimation in Stan, results='hide'}
+
+stan_data <- makeDesign(Observation)
+
+#fit model
+      
+      #Simpler datasets work fine in this quick likelihood estimation
+      #likelihood
+      M <- stan_model(file=here("quant_metabar_multinom_NGN.stan"))
+      stanOpt <- optimizing(M, data=stan_data, iter=30000,draws=0,
+                            verbose=T,
+                            #init=stan_init_f4(N_species=stan_data$N_species, Observation),
+                            tol_param=1e-15,
+                            algorithm="LBFGS")
+      MLest <- stanOpt$par[grep("int_samp_small", names(stanOpt$par))] %>%
+        matrix(ncol = stan_data$N_species)
+
+      #make sure we got amp efficiencies right; this should be a straight line      
+      ML_a <- stanOpt$par[grep("alpha\\[", names(stanOpt$par))]
+      plot(ML_a ~ Observation$Observation %>% pull(a) %>% unique())
+      
+      #scale by qPCR values to estimate absolute concentration 
+      totalDNA <- results_qPCR$bayes_est / MLest[,1]
+      ML_absolute <- totalDNA * MLest
+      ML_absolute <- ML_absolute %>% 
+        as.data.frame() %>% 
+        mutate(site_idx = 1:n()) %>% 
+        pivot_longer(-site_idx, names_to = "species", values_to = "ML_absolute") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+
+      
+      res.df <- Observation$Observation %>% 
+        ungroup() %>% 
+        dplyr::select(species, time, creek, biol, site, b_proportion, count) %>% 
+        distinct() %>% 
+        unite(time, creek, biol, site, col = "s", remove = F) %>% 
+        mutate(site_idx = match(s, unique(s))) %>% 
+        mutate(species = as.numeric(species),
+               site_idx = as.numeric(site_idx))
+      MLest <- MLest %>% 
+        as.data.frame() %>% 
+        mutate(site_idx = 1:n()) %>% 
+        pivot_longer(-site_idx, names_to = "species", values_to = "MLest") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species)) %>% 
+        left_join(res.df) %>% 
+        left_join(ML_absolute)
+    
+      #proportions
+      MLest %>% 
+        ggplot(aes(x = b_proportion, y = MLest)) +
+          geom_point() +
+          coord_trans(y ='log10', x='log10') +
+          geom_abline(aes(slope = 1, intercept = 0)) +
+          xlab("True Proportion") + ylab("ML Estimated Proportion")
+    
+
+```
+
+Quick look: does the ML estimate of proportion, scaled by the qPCR estimate, approximate the underlying process well?
+
+```{r quick look at absolute abundance estimate}
+
+      
+      #absolute
+      MLest %>% 
+        ggplot(aes(x = count, y = ML_absolute)) +
+          geom_point() +
+          coord_trans(y ='log10', x='log10') +
+          geom_abline(aes(slope = 1, intercept = 0)) +
+          xlab("True Abundance") + ylab("ML Estimated Abundance")
+```
+
+
+Now estimate full Bayesian version of proportions, so we can use the full posterior.
+
+```{r Bayesian Model Estimation in Stan, results='hide'}
+      stan_pars <- c( 
+              "alpha",
+              "beta",
+              "eta_samp",
+              "eta_mock",
+              "tau",
+              "mu_samp",
+              "mu_mock",
+              "int_samp_small"
+            )
+
+      #full Bayesian model
+      stanMod = stan(file = here("quant_metabar_multinom_NGN.stan") ,data = stan_data,
+                     verbose = FALSE, chains = 3, thin = 1,
+                     warmup = 500, iter = 1000,
+                     control = list(adapt_init_buffer = 175,
+                                    max_treedepth=12,
+                                    stepsize=0.01,
+                                    adapt_delta=0.7,
+                                    metric="diag_e"),
+                     pars = stan_pars,
+                     refresh = 10,
+                     boost_lib = NULL,
+                     #init = stan_init_f2(n.chain=N_CHAIN,N_species=N_species),
+                     sample_file = "temp/tmp.csv"
+      )
+
+      #stanMod <- readRDS(here("ModFit_20220331_121413.RDS"))
+      
+      out <- list(
+        stanMod = stanMod,
+        seed = SEED,
+        Nspecies = NSpecies,
+        Nt = Nt,
+        Process = Process,
+        Observation = Observation,
+        stan_data,
+        stan_pars
+      )
+      
+      saveRDS(out, file = paste0("Mod_object_", format(Sys.time(), "%Y%m%d_%X"), ".RDS"))
+
+      
+      #set up df to handle estimates
+      NCreeks <- length(unique(Observation$Observation$creek))
+      NBiol <- length(unique(Observation$Observation$biol))
+      
+      res.df <- Observation$Observation %>% 
+        ungroup() %>% 
+        dplyr::select(species, time, creek, biol, site, b_proportion) %>% 
+        distinct() %>% 
+        unite(time, creek, biol, site, col = "s", remove = F) %>% 
+        mutate(site_idx = match(s, unique(s))) %>% 
+        mutate(species = as.numeric(species),
+               site_idx = as.numeric(site_idx))
+       post <- summary(stanMod, par = "int_samp_small")$summary %>% 
+        as.data.frame() %>% 
+        mutate(site_idx = rep(1:stan_data$N_obs_samp_small, each = stan_data$N_species),
+               species = rep(1:stan_data$N_species, times = stan_data$N_obs_samp_small)) %>% 
+        left_join(res.df)
+
+
+```
+
+How well do the posterior mean estimates fit the true proportions? 
+
+```{r Illustrate Model Fit}
+
+        post %>% 
+          ggplot(aes(x = b_proportion, y = mean)) +
+          geom_point() +
+          geom_segment(aes(x = b_proportion, xend = b_proportion, y = `25%`, yend = `75%`)) +
+          geom_abline(slope = 1, intercept = 0) +
+          xlab("True Proportion") + ylab("Estimated Proportion")
+          #facet_wrap(~species, scale = 'free')
+
+        # summary(stanMod, par = "alpha")$summary %>% 
+        #   as.data.frame() %>% 
+        #   mutate(Observation$Observation %>% ungroup() %>% dplyr::select(a) %>% distinct()) %>% 
+        #   ggplot(aes(x = a, y = mean)) +
+        #     geom_point() +
+        #     geom_segment(aes(x = a, xend = a, y = `25%`, yend = `75%`)) +
+        #     geom_smooth(method = "lm") +
+        #     xlab("True a") + ylab("Estimated alpha") + ggtitle("Amp Efficiencies")
+
+ 
+        # post %>% 
+        #   filter(creek %in% 1:3) %>% 
+        #   filter(site == "downstream") %>% 
+        #   ggplot(aes(x = time, y = b_proportion)) +
+        #   geom_point(color = "grey50") +
+        #   geom_smooth(color = "grey50") +
+        #   facet_wrap(creek ~species, scales = "free") +
+        #   geom_point(aes(x = time, y = mean), color = "red") +
+        #   geom_smooth(aes(x = time, y = mean), color = "red") 
+
+
+```
+
+Now, we sample from the posteriors of the proportions and from the qPCR model to reach a final estimate of absolute molecular abundance in the underlying samples.
+
+```{r}
+ppp <- extract(stanMod, par = "int_samp_small")$int_samp_small
+ppq <- 10^extract(qMod, par = "envir_concentration")$envir_concentration #for simulations, this relates to species 1
+
+totalDNAposterior <- ppq/ppp[,,1]
+
+#dimensions are c(postSamples, site, species)
+absolute_estimate <- array(NA, dim = dim(ppp))
+for (i in 1:NSpecies){
+  absolute_estimate[,,i] <- ppp[,,i] * totalDNAposterior
+}
+
+mean_Abs_est <- apply(absolute_estimate, c(2:3), mean) %>% 
+        as.data.frame() %>% 
+        mutate(BiolSample_idx = 1:n()) %>% 
+        pivot_longer(-BiolSample_idx, names_to = "species", values_to = "mean_Abs_est") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+
+lower95 <- apply(absolute_estimate, c(2:3), quantile, .025) %>% 
+  as.data.frame() %>% 
+        mutate(BiolSample_idx = 1:n()) %>% 
+        pivot_longer(-BiolSample_idx, names_to = "species", values_to = "lower95_est") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+upper95 <- apply(absolute_estimate, c(2:3), quantile, .975) %>% 
+  as.data.frame() %>% 
+        mutate(BiolSample_idx = 1:n()) %>% 
+        pivot_longer(-BiolSample_idx, names_to = "species", values_to = "upper95_est") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+
+trueCount <- Process %>% 
+  dplyr::select(i, t, j, k, lambda, upstream) %>% 
+  pivot_longer(-c(i,t,j,k)) %>% 
+  unite(t,j,k,name, col = "tjk") %>% 
+  mutate(BiolSample_idx = match(tjk, unique(tjk))) %>% 
+  rename(species = i,
+         trueCount = value) 
+  # pivot_wider(names_from = species, values_from = value) %>% 
+  # dplyr::select(-c(tjk, BiolSample_idx)) %>% 
+  # as.matrix()
+
+results <- trueCount %>% 
+  left_join(mean_Abs_est) %>% 
+  left_join(upper95) %>% 
+  left_join(lower95)
+  
+results %>% 
+  ggplot(aes(x = trueCount, y = mean_Abs_est)) +
+    geom_point(color = "red") +
+    geom_segment(aes(x = trueCount, xend = trueCount, y = lower95_est, yend = upper95_est)) +
+    geom_abline(aes(intercept = 0, slope = 1)) +
+    coord_trans(y ='log10', x='log10') +
+    xlab("True Count") + ylab("Posterior Absolute Estimate")
+
+```
+
+
+Now, finally, an we accurately estimate the effects of culverts on these species? How large an effect would we expect to be able to detect?
+
+```{r Illustrate Culvert Effect}
+    results <- results %>% 
+      left_join(Process %>% dplyr::select(i, culvert_effect) %>% distinct() %>% rename(species = i)) %>% 
+  separate(tjk, into = c("time", "stream", "bottle", "position")) 
+  #dplyr::select(time, stream, bottle, position, BiolSample_idx)
+
+
+#flatten biol replicates into means within geographic sites
+
+      downstream <- absolute_estimate[,results %>% dplyr::select(time, stream, bottle, position, BiolSample_idx) %>% distinct() %>% filter(position == "lambda") %>% pull(BiolSample_idx),
+      ]
+      
+      upstream <- absolute_estimate[,results %>% dplyr::select(time, stream, bottle, position, BiolSample_idx) %>% distinct() %>% filter(position == "upstream") %>% pull(BiolSample_idx),
+      ]
+      
+      down_idx <- results %>% dplyr::select(time, stream, bottle, position, BiolSample_idx) %>% distinct() %>% filter(position == "lambda") %>% unite(time, stream, col = "timestream") %>% 
+        mutate(idx = match(timestream, unique(timestream)))
+      
+      up_idx <- results %>% dplyr::select(time, stream, bottle, position, BiolSample_idx) %>% distinct() %>% filter(position == "upstream") %>% unite(time, stream, col = "timestream") %>% 
+        mutate(idx = match(timestream, unique(timestream)))
+      
+      
+      downstream_avg <- array(NA, dim = c(dim(downstream)[1], #posterior samples
+                                          dim(downstream)[2]/NBiol, #unique geogr sites
+                                          dim(downstream)[3] #species
+                                          ))
+      for (i in 1:dim(downstream_avg)[2]){
+        downstream_avg[,i,] <- apply(downstream[,down_idx$idx == i,], c(1,3), mean)
+      }
+      
+      upstream_avg <- array(NA, dim = c(dim(upstream)[1], #posterior samples
+                                          dim(upstream)[2]/NBiol, #unique geogr sites
+                                          dim(upstream)[3] #species
+                                          ))
+      for (i in 1:dim(upstream_avg)[2]){
+        upstream_avg[,i,] <- apply(upstream[,up_idx$idx == i,], c(1,3), mean)
+      }
+
+#difference between downstream and upstream
+#array of dimensions (posteriorSample, geogr site, species)
+diff <- (upstream_avg-downstream_avg)/downstream_avg  #culvert effect
+diff_mean <- apply(diff, c(2,3), mean) %>% 
+  as.data.frame() %>% 
+        mutate(TimeStream_idx = 1:n()) %>% 
+        pivot_longer(-TimeStream_idx, names_to = "species", values_to = "mean_Diff_est") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+diff_95high <- apply(diff, c(2,3), quantile, .975) %>% 
+  as.data.frame() %>% 
+        mutate(TimeStream_idx = 1:n()) %>% 
+        pivot_longer(-TimeStream_idx, names_to = "species", values_to = "mean_Diff_95high") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+
+diff_95low <- apply(diff, c(2,3), quantile, .025) %>% 
+  as.data.frame() %>% 
+        mutate(TimeStream_idx = 1:n()) %>% 
+        pivot_longer(-TimeStream_idx, names_to = "species", values_to = "mean_Diff_95low") %>% 
+        mutate(species = str_replace(species, "V",""),
+               species = as.numeric(species))
+  
+diff_res <- results %>% 
+  dplyr::select(time, stream, species, culvert_effect) %>% 
+  distinct() %>% 
+  unite(time, stream, col = "timestream") %>% 
+  mutate(TimeStream_idx = match(timestream, unique(timestream))) %>% 
+  left_join(diff_mean) %>% 
+  left_join(diff_95high) %>% 
+  left_join(diff_95low)
+  
+
+diff_res %>% 
+  ggplot(aes(x = species, y = culvert_effect)) +
+    geom_point() +
+    geom_point(aes(x = species, y = mean_Diff_est), col = "red") +
+    geom_segment(aes(x = species, xend = species, y = mean_Diff_95low, yend = mean_Diff_95high), col = "red") +
+    facet_grid(~timestream)
+```
+
+
+Here, the 95% CIs are pretty large because of the differences among biological samples within a site/time. But yeah, the means appear to track the true culvert effects quite well. They are perhaps biased slightly high for some reason.  
+
+
+
