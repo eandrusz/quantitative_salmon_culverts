@@ -1,0 +1,87 @@
+---
+title: "The Quantitative Impact of an Environmental Intervention"
+author: "NGN Team"
+date: "4/26/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Abstract
+
+Environmental laws around the world require some version of an environmental impact assessment surrounding construction projects and other discrete instances of human development. Information requirements for these assessments vary by jurisdiction, but nearly all require an analysis of the living elements of affected ecosystems. Because it is possible to sample and amplify the genetic material of many species present in those environments, amplicon-sequencing — also called metabarcoding or eDNA analysis — is a tractable, powerful, and increasingly common way of doing environmental impact analysis for development projects. Here, we analyze a 12-month time-series of water samples taken before, during, and after a construction project in a salmonid-bearing freshwater stream. We use an asymmetrical BACI design with four control streams to develop a robust null expectation against which to evaluate the impact of this discrete human intervention on the fish fauna of the treatment stream. After accounting for seasonal variability, we find XXX effects on YY species of fish as of ZZ months post-construction. We therefore demonstrate a rigorous, quantitative method for environmental-impact reporting using eDNA that is broadly applicable in environments worldwide. More specifically, in the context of billions of dollars of court-mandated road-culvert replacements taking place in the coming decade in Washington State, USA, our results suggest [salmonids are likely to recover quickly, etc., or whatever our actual results do, in fact, suggest]
+
+
+## Introduction
+
+[much of the below from the grant proposal; need to update/smooth, obviously]
+
+At present, it is difficult or impossible to measure the environmental impacts of discrete human activities, despite such assessment often being required by law.
+
+Sequencing environmental DNA (eDNA) is means of surveying many species in a consistent and scaleable way. Sampling eDNA before, during, and after a development project would be a new and powerful way of assessing that project’s impacts on the local biological communities, and conceivably could become the standard way to do such impact assessment.
+
+All methods of environmental sampling are biased, in the sense that they capture a selective portion of the biodiversity present. Net samples for fish, for example, fail to capture species too small or too large to be caught in the net; bacterial cultures capture only those species that can be cultured on available media, and so forth. Despite the pleasing simplicity of the idea, there is no one way to survey the world and just “see what is there.” Environmental DNA, however, comes as close to this goal as any method yet developed: a sample of water, soil, or even air, contains the genetic traces of many thousands of species, from microbes to whales.
+
+Surveying the natural world by amplifying and sequencing DNA from environmental sources such as water, air, or soil has long been commonplace in microbial ecology (Rondon et al. 2000; Ogram, Sayler, and Barkay 1987; Turnbaugh et al. 2007) , but has recently become popular for characterizing ecological communities of eukaryotes (Port et al. 2016; Stat et al. 2017; R. P. Kelly et al. 2014; Valentini et al. 2016; Taberlet et al. 2012; De Vargas et al. 2015). Because the source of samples is the environment itself rather than specific target organisms, the data resulting from such studies have become known as environmental DNA (eDNA) (Taberlet et al. 2012); the ultimate source of genetic material in the environment may be living or waste cells or extracellular DNA (Taberlet et al. 2012). Techniques that take advantage of such data may include non-PCR-based methods such as hybridization, but generally include an amplification step such as quantitative PCR, digital- droplet PCR, or traditional PCR from mixed templates followed by high-throughput sequencing. This last technique is known as metabarcoding, eDNA amplicon-sequencing, or more generally, marker-gene analysis.
+
+In the metabarcoding context, broad-spectrum PCR primers capture many taxa across a very wide diversity of the tree of the life (Leray et al. 2013), but nevertheless the absence of a taxon from a sequenced sample does not indicate the absence of that taxon from the environment. Instead, the unsampled species simply may not have been susceptible to that set of PCR primers, and so failed to amplify. The result is often a dataset that represents hundreds or thousands of taxa, but these taxa are a fraction of a larger (and perhaps taxonomically broad) pool of species present. Using multiple, independent primer sets increases taxonomic scope by drawing from overlapping pools of taxa (Kelly et al. 2017), maximizing the likelihood of detecting any given taxon present. In virtually all comparisons, metabarcoding recovers far more taxa from an area than any other sampling method (Port et al. 2016; Kelly et al. 2017).
+
+The results of metabarcoding studies differ dramatically from those of traditional, non- PCR-based sampling methods as a result of the PCR process itself. This exponential process means that 1) small changes in laboratory technique can yield large differences in outcomes, 2) PCR-based assays likely act differently on every target species, 3) there is consequently no one-to-one correspondence between the number of assigned reads in an eDNA study and the abundance of the source organism, and 4) neither might we expect a universally strong correlation in estimates of taxon-richness between eDNA and traditional methods. By understanding these process differences, we can correct for taxon-specific biases in ampification effiency to yield quantitative estimates of the community composition prior to PCR (Shelton et al. submitted). 
+
+The resulting dataset is compositional, revealing the proportions of each species' DNA present in each sample, but importantly this contains no information about the absolute abundance of DNA present. We can tie these proportional estimates to absolute abundances using additional data such as a qPCR assay for one of the taxa present.  
+
+...
+
+Here, we report the results of a yearlong sampling effort before, during, and after a small construction project in our experimental creek, assessing the impact of that project on the salmonid species present. We do so using a combination of metabarcoding (12s mtDNA) and qPCR to yield quantitative estimates of the concentrations of DNA present at each time point, and we use parallel samples from an additional four control creeks to develop a causal analysis of changes in these concentrations.  
+
+
+As a result of a federal court ruling [US v Washington, culvert case, J. Martinez], Washington State is under a court order to replace many of the culverts that allow water to pass under roads and highways. These culverts, at present, collectively prevent or hinder anadomous salmon species from using [thousands of square kilometers] of habitat, which in turn violates the treaty rights of the region's indigenous tribes. Because replacing culverts can require substantial intervention -- for example, diverting the water from a creek segment and rebuilding the road with a redesigned culvert -- and because these replacements occur serially according to a schedule, they present an attractive experimental design.
+
+
+...
+
+
+A clear opportunity for policy-relevant eDNA work is in using its power to survey many species at a time to improve the way we assess the impacts of human activities. Within the United States, both state and federal laws often require a form of environmental-impact assessment for medium- to large-scale projects (i.e., those that might have a significant impact on the environment). Outside the US, many nations have their own versions of these same laws. Environmental assessments have begun to make use of eDNA for such work [CITE NatureMetrics, few published examples] around the world; in the U.S., however, assessments generally continue to rely on literature reviews or field measurements of a few key species, selected beforehand. [Moreover, they often lack post-project sampling, given that the goals of a development project normally focus on construction itself, etc.]
+
+## Methods 
+
+### Sites
+
+Five creeks, with map. Padden as experimental creek. [Open question about what to do with two different culverts here; we have to decide if this is experimentally important, or if we can just look at downstream and up5, keeping the experimental design cleaner.]
+
+These creeks each have culverts, some already replaced, varying levels of passability, etc.
+
+### Water Sampling
+
+Triplicate biological samples, upstream and downstream, monthly
+
+### DNA Extraction, Amplification, Sequencing, and Bioinformatics
+
+Triplicate technical replicates of each sample, 12s MiFish, dilution to deal with inhibition, this dilution doesn't matter, sequencing on MiSeq, randomizing in 3-month blocks to avoid run effects, etc. 
+
+Pipeline description and online availability. N sequences, etc., with table of pipeline steps and surviving N sequences at each of those steps.
+
+
+### Quantitative PCR
+
+### Quantitative Model
+
+Calibration with mock community; description of Stan model with reference to Shelton et al. 
+
+Tying proportions to absolute concentrations using qPCR; these absolute concentrations are a derived quantity in the Stan model, and they incorporate uncertainty from the qPCR standard curve. 
+
+### Estimating the Effect of Culvert Replacement
+
+Consistent with the asymmetrical BACI study design, we use observations from our four control creeks to develop a null expectation, against which we compare the observations in Padden Creek, our experimental site. Here, we use the difference in DNA concentration upstream vs. downstream of the existing culvert as our outcome variable of interest. We calculate this difference -- treating our biological replicates (within a site) as being drawn from a common distribution, and treating upstream and downstream sites within a creek as independent [ALTHOUGH WE COULD CHANGE THIS] -- independently for each month in each creek.  [WE COULD do this as a time-series, where months within creeks aren't independent, etc... let's discuss.]
+
+The result is a null distribution of [deltaSalmonDNA] for each species, in the absence of construction or other major intervention. This null varies by month, and so accounts for the expected strong seasonal patterns of salmonids. We then assess the effect of the culvert replacement [construction/intervention] in our experimental creek, comparing our observed [deltaSalmonDNA] in Padden to our null for each species in each month. Prior to culvert replacement, we expect no difference between experimental and control creeks; observed differences during and after construction are attributable directly to the construction project. 
+
+
+## Results
+
+## Discussion
+
+## Conclusion
+
