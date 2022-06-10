@@ -15,25 +15,39 @@ library(rstan)
 library(here)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
+library(readxl)
 
 source(here("Scripts","qm_qpcr_model", "simFunctions.R")) #functions to generate communities and observations of those communities
 ```
 
 ```{r load qPCR data}
-qPCRdata <- read.csv(here("Input","qpcr","cutthroat_qpcr_results.csv")) %>% 
+all.plates <- list.files(path = here("Input","qpcr","Results"), pattern = "*data.xls", recursive = T, full.names = T)
+
+plate1 <- read_excel(all.plates[5],sheet="Results", skip=8, col_names=FALSE)
+plate2 <- read_excel(all.plates[9],sheet="Results", skip=8, col_names=FALSE)
+
+qPCRdata <- bind_rows(list(plate1, plate2), .id="Plate") 
+qPCRdata <- qPCRdata[,1:11]
+names(qPCRdata) <- c("Plate","Well","Sample","Assay","Type","Quencher","Reporter","Ct","Ctmean", "Ctstd","Quantity")
+qPCRdata <- qPCRdata %>% filter(Assay != "")
+qPCRdata$Sample[qPCRdata$Type == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Type == "STANDARD"] %>% as.numeric()
+qPCRdata <- qPCRdata %>% select(c("Plate","Well","Sample","Type","Ct"))
+
+qPCRdata$Plate <- 1
+
+qPCRdata <- qPCRdata %>% 
   filter(Ct != "Undetermined") %>% 
-  # mutate(Plate = ifelse(Plate == 2 & Type == "UNKNOWN", 1, Plate)) %>%  #temporarily treat plate 2 as arising from plate 1 standards
-  # filter(Plate != 2) %>%  #remove offending standards for the moment 
   unite(c(Plate,Sample), col = "plateSample", remove = F) %>% 
   mutate(plateSample_idx = match(plateSample, unique(plateSample))) %>% 
   mutate(Ct = as.numeric(Ct)) %>% 
   mutate(conc = NA)
+
 qPCRdata$conc[qPCRdata$Type == "STANDARD"] <- qPCRdata$Sample[qPCRdata$Type == "STANDARD"] %>% as.numeric()
 
 qPCRdata <- qPCRdata %>% 
   left_join(read_csv(here("Input","qpcr","qpcr.dilutions.csv")) %>% dplyr::select(Sample, Final.qpcr.Dilution)) %>% 
   rename(dilution = Final.qpcr.Dilution) %>%  
-separate(Sample, into = c("time", "creek", "station", "biolRep"), remove = F) 
+  separate(Sample, into = c("time", "creek", "station", "biolRep"), remove = F) 
 
 ```
 
@@ -238,6 +252,7 @@ results_qPCR %>%
     geom_segment(aes(x = station, xend = station, y = log(ci25_corrected), yend = log(ci75_corrected))) +
     facet_wrap(~time)
     
+write_rds(results_qPCR, file=here("Output", "qpcr", "qpcr_only_results.RDS"))
 
 ```
 
