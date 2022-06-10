@@ -28,7 +28,7 @@ transformed data {
 parameters {
   vector<lower=0>[Nplates] beta_std_curve_0;
   vector<upper=0>[Nplates] beta_std_curve_1;
-  vector[Nplates]  gamma_0; //intercept to scale variance w the mean
+  vector<lower=0>[Nplates]  gamma_0; //intercept to scale variance w the mean
   vector<lower=0>[Nplates]  gamma_1; //slope to scale variance w the mean
   vector[NSamples-NstdSamples] envir_concentration;
   
@@ -61,6 +61,6 @@ model {
   beta_std_curve_1 ~ normal(stdCurvePrior_slope[1], stdCurvePrior_slope[2]);
   envir_concentration ~ normal(0, 5); //log10 scale
   gamma_0 ~ normal(0,2);
-  gamma_1 ~ normal(0,1);
+  gamma_1 ~ normal(0,.1);
 }
 

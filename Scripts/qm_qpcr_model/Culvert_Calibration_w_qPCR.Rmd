@@ -129,7 +129,7 @@ Observation$Observation  <- Observation$Observation %>%
 
 keepSamples <- intersect(Observation$Observation$Sample, qPCRdata$Sample)
 Observation$Observation <- Observation$Observation %>% filter(Sample %in% keepSamples)
-envir_qPCR <- qPCRdata %>% filter(Sample %in% keepSamples)
+#envir_qPCR <- qPCRdata %>% filter(Sample %in% keepSamples)
 
 NSpecies <- nrow(sp_list)
 
@@ -159,6 +159,7 @@ type <- qPCRdata %>% dplyr::select(plateSample, Type) %>% distinct() %>% pull(Ty
 
 stan_qPCR_data <- list(
   Nplates = length(unique(qPCRdata$Plate)),
+  SampleNames = unique(qPCRdata$Sample),
   Nobs = length(qPCRdata$Ct),
   NSamples = length(unique(qPCRdata$plateSample)),
   NstdSamples = qPCRdata %>% filter(Type == "STANDARD") %>% dplyr::select(plateSample) %>% distinct() %>% nrow(),
@@ -168,7 +169,7 @@ stan_qPCR_data <- list(
   plateSample_idx = match(qPCRdata$plateSample, unique(qPCRdata$plateSample)),
   y = qPCRdata$Ct,
   known_concentration = qPCRdata %>% filter(Type == "STANDARD") %>% dplyr::select(plateSample_idx, conc) %>% distinct() %>% pull(conc),
-  stdCurvePrior_intercept = c(42, 1), #normal distr, mean and sd
+  stdCurvePrior_intercept = c(40, .5), #normal distr, mean and sd
   stdCurvePrior_slope = c(-3, .5) #normal distr, mean and sd
 )
 
@@ -190,9 +191,9 @@ qMod = stan(file = here("Scripts","qm_qpcr_model","qPCR_calibration_multiplate.s
                                     metric="diag_e"),
                      #pars = stan_pars,
                      refresh = 10,
-                     boost_lib = NULL,
+                     boost_lib = NULL
                      #init = stan_init_f2(n.chain=N_CHAIN,N_species=N_species),
-                     sample_file = "temp/tmp.csv"
+                     #sample_file = "temp/tmp.csv"
       )
 
 #plot(qMod, par = c("beta_std_curve_0", "beta_std_curve_1", "gamma_0", "gamma_1"))
@@ -257,10 +258,6 @@ write_rds(results_qPCR, file=here("Output", "qpcr", "qpcr_only_results.RDS"))
 ```
 
 
-
-
-
-
 ```{r ML Estimation in Stan, results='hide'}
 
 stan_data <- makeDesign(Observation)
@@ -278,12 +275,15 @@ stan_data <- makeDesign(Observation)
       MLest <- stanOpt$par[grep("int_samp_small", names(stanOpt$par))] %>%
         matrix(ncol = stan_data$N_species)
 
+      #amp efficiencies
+      #ML_a <- stanOpt$par[grep("alpha\\[", names(stanOpt$par))]
       
-      ML_a <- stanOpt$par[grep("alpha\\[", names(stanOpt$par))]
       
+      #keep only relevant qPCR samples for comparison
+      envir_qPCR <- results_qPCR %>% filter(Sample %in% keepSamples) %>% dplyr::select(plateSample, mean_corrected, ci25_corrected, ci75_corrected) %>% distinct()
       
       #scale by qPCR values to estimate absolute concentration 
-      totalDNA <- results_qPCR %>% dplyr::select(-Ct) %>% pull(mean_corrected) / MLest[,RefSpecies]
+      totalDNA <- envir_qPCR$mean_corrected / MLest[,RefSpecies]
       ML_absolute <- totalDNA * MLest
       ML_absolute <- ML_absolute %>% 
         as.data.frame() %>% 
@@ -315,10 +315,6 @@ stan_data <- makeDesign(Observation)
         ggplot(aes(x=station, y=log(ML_absolute), color = as.factor(species))) +
         geom_boxplot() +
         facet_grid(as.factor(species)~time, scales = "free_y")
-
-      MLest %>% 
-        filter(time == "0321", species == 1)
-      results_qPCR %>% filter(time == "0321")
 ```
 
 Now estimate full Bayesian version of proportions, so we can use the full posterior.
@@ -346,9 +342,9 @@ Now estimate full Bayesian version of proportions, so we can use the full poster
                                     metric="diag_e"),
                      pars = stan_pars,
                      refresh = 10,
-                     boost_lib = NULL,
+                     boost_lib = NULL
                      #init = stan_init_f2(n.chain=N_CHAIN,N_species=N_species),
-                     sample_file = "temp/tmp.csv"
+                     # sample_file = "temp/tmp.csv"
       )
 
       #stanMod <- readRDS(here("ModFit_20220331_121413.RDS"))
@@ -392,7 +388,16 @@ Now, we sample from the posteriors of the proportions and from the qPCR model to
 
 ```{r}
 ppp <- extract(stanMod, par = "int_samp_small")$int_samp_small #get posterior samples for proportions
-ppq <- 10^extract(qMod, par = "envir_concentration")$envir_concentration #get posterior samples for absolute concentration of reference species
+ppq <- 10^extract(qMod, par = "envir_concentration")$envir_concentration[,which((qPCRdata %>% filter(Type != "STANDARD") %>% pull(Sample) %>% unique()) %in% keepSamples)]
+ #get posterior samples for absolute concentration of reference species
+
+#apply dilution
+dilutionFactor <- qPCRdata %>% 
+  filter(Sample %in% keepSamples) %>% 
+  dplyr::select(Sample, dilution) %>% 
+  distinct() %>% 
+  pull(dilution)
+ppq <- ppq * dilutionFactor
 
 totalDNAposterior <- ppq/ppp[,,RefSpecies] #note need same number of chains in quant metabar and qPCR models for this to work easily
 
