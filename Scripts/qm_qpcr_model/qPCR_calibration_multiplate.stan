@@ -31,10 +31,12 @@ parameters {
   vector<upper=0>[Nplates] beta_std_curve_1;
   vector[Nplates]  gamma_0; //intercept to scale variance w the mean
   vector<lower=0>[Nplates]  gamma_1; //slope to scale variance w the mean
-  vector[Nplates] phi_0; 
-  vector[Nplates] phi_1;
+  // vector[Nplates] phi_0; 
+  // vector[Nplates] phi_1;
+  real phi_0;
+  real phi_1;
   
-  vector[NSamples-NstdSamples] envir_concentration;
+  vector<lower=0>[NSamples-NstdSamples] envir_concentration;
   
 }
 
@@ -55,7 +57,7 @@ transformed parameters{
     sigma[plateSample_idx[i]] = exp(gamma_0[plate_idx[i]] + 
                                   gamma_1[plate_idx[i]]*mu[plateSample_idx[i]]);
                                   
-    theta[plateSample_idx[i]] = phi_0[plate_idx[i]] + phi_1[plate_idx[i]]*Concentration[plateSample_idx[i]];
+    theta[plateSample_idx[i]] = phi_0 + phi_1*Concentration[plateSample_idx[i]];
                                   
   }
 }
@@ -75,8 +77,8 @@ model {
   beta_std_curve_0 ~ normal(stdCurvePrior_intercept[1], stdCurvePrior_intercept[2]);
   beta_std_curve_1 ~ normal(stdCurvePrior_slope[1], stdCurvePrior_slope[2]);
   envir_concentration ~ normal(0, 5); //log10 scale
-  gamma_0 ~ normal(0,2);
+  gamma_0 ~ normal(0,10);
   gamma_1 ~ normal(0,1);
-  phi_0 ~ normal(0 , 10) ;
-  phi_1 ~ normal(5, 5) ;
+  phi_0 ~ normal(-5 , 2);
+  phi_1 ~ normal(5, 2);
 }
