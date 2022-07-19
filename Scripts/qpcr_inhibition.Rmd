@@ -1,0 +1,135 @@
+---
+title: "check_IPC"
+author: "Eily Allan"
+date: "7/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(readxl)
+```
+
+```{r load qPCR data}
+qPCRfiles <- list.files(path = here("Input","qpcr","Results"), pattern = "*data", recursive = T, full.names = T)
+
+find_to_dilute <- function(plate_num) {
+filename = qPCRfiles[plate_num]
+filename2 = unlist(strsplit(filename, "_"))[4]
+filename3 = unlist(strsplit(filename2,"-"))[3]
+filename4 = str_sub(filename3, start=1, end =3)
+plate <- read_excel(qPCRfiles[plate_num], sheet = "Results", skip=6)
+colnames(plate)[8] <- "Ct" ## USING AVERAGE CT OF THREE REPLICATES - could go back and do if even just one replicate 
+colnames(plate)[2] <- "Sample"
+colnames(plate)[3] <- "Assay"
+plate$Plate <- as.numeric(filename4)
+
+IPCdata <- plate %>% 
+  filter(Assay == "IPC") %>% 
+  select(c("Plate", "Well","Sample", "Ct")) %>% 
+  mutate(Ct = as.numeric(Ct)) 
+  
+IPCntc <- IPCdata %>% 
+  filter(str_detect(Sample,"NTC")) %>% 
+  filter(! is.na(Ct)) 
+
+IPCthresh <- mean(IPCntc$Ct)
+
+IPCdata <- IPCdata %>% 
+  mutate(diffIPC = Ct - IPCthresh) %>% 
+  filter(! str_detect(Sample,"NTC")) %>%
+  mutate(dilute = diffIPC>3 | is.na(Ct)) 
+
+todilute <- IPCdata %>% 
+  filter(dilute)
+
+return(todilute)
+}
+
+## first dilutions
+todilute <- list()
+for (i in 1:length(qPCRfiles)) { 
+todilute[[i]] <- find_to_dilute(i)
+}
+alltodilute <- do.call(rbind, todilute)
+
+firstdilutions <- alltodilute%>% 
+  filter(Plate < 14)
+
+write.csv(firstdilutions, file=here("Output","qpcr","first_inhibition.csv"), row.names=FALSE)
+
+seconddilutions <- alltodilute%>% 
+  filter(Plate > 13)
+
+write.csv(seconddilutions, file=here("Output","qpcr","second_inhibition.csv"), row.names=FALSE)
+
+
+```
+
+## Cutthroat data that doesn't need dilutions 
+
+```{r load qPCR data}
+qPCRfiles <- list.files(path = here("Input","qpcr","Results"), pattern = "*data", recursive = T, full.names = T)
+
+qpcr_good_data <- function(plate_num) {
+filename = qPCRfiles[plate_num]
+filename2 = unlist(strsplit(filename, "_"))[4]
+filename3 = unlist(strsplit(filename2,"-"))[3]
+filename4 = str_sub(filename3, start=1, end =3)
+plate <- read_excel(qPCRfiles[plate_num], sheet = "Results", skip=6)
+colnames(plate)[8] <- "Ct" ## USING AVERAGE CT OF THREE REPLICATES - could go back and do if even just one replicate 
+colnames(plate)[2] <- "Sample"
+colnames(plate)[3] <- "Assay"
+plate$Plate <- as.numeric(filename4)
+
+IPCdata <- plate %>% 
+  filter(Assay == "IPC") %>% 
+  select(c("Plate", "Well","Sample", "Ct")) %>% 
+  mutate(Ct = as.numeric(Ct)) 
+  
+IPCntc <- IPCdata %>% 
+  filter(str_detect(Sample,"NTC")) %>% 
+  filter(! is.na(Ct)) 
+
+IPCthresh <- mean(IPCntc$Ct)
+
+IPCdata <- IPCdata %>% 
+  mutate(diffIPC = Ct - IPCthresh) %>% 
+  filter(! str_detect(Sample,"NTC")) %>%
+  mutate(dilute = diffIPC>3 | is.na(Ct)) 
+
+keep_samples <- IPCdata %>% 
+  filter(! dilute) 
+
+good_data <- plate %>% 
+  filter(Assay != "IPC") %>% 
+  select(c("Plate", "Well","Sample", "Ct")) %>% 
+  mutate(Ct = as.numeric(Ct)) %>% 
+  filter(Sample %in% keep_samples$Sample) 
+
+return(good_data)
+}
+
+nodilute <- list()
+for (i in 1:length(qPCRfiles)) { 
+nodilute[[i]] <- qpcr_good_data(i)
+}
+allnodilute <- do.call(rbind, nodilute)  %>% 
+  filter(! str_detect(Sample,"EB"))
+
+write.csv(allnodilute, file=here("Output","qpcr","not_inhibited_cutthroat.csv"), row.names=FALSE)
+
+```
+
+## Samples to apply coho (not inhibited, no Ct assigned)
+
+```{r to coho}
+
+tocoho <- allnodilute %>% 
+  filter(is.na(Ct)) %>% 
+  filter(! str_detect(Sample,"EB"))
+
+write.csv(tocoho, file=here("Output","qpcr","not_inhibited_cutthroat_to_coho.csv"), row.names=FALSE)
+```

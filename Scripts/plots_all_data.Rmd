@@ -22,9 +22,10 @@ library(ggplot2)
 extracts <- read.csv(here("Input","extract_qubits.csv"))
 meta_metadata <- read.csv(here("Input","all_mifish_metadata.csv"))
 meta_postpcr1 <- read.csv(here("Input","metabarcoding","post_pcr1_qubit.csv"))
-meta_postpcr2 <- read.csv(here("Input","metabarcoding","post_pcr1_qubit.csv"))
+#meta_postpcr2 <- read.csv(here("Input","metabarcoding","post_pcr2_qubit.csv"))
+meta_reads <- readRDS(here("Output", "metabarcoding", "species.table.RDS"))
 qpcr_meta <- read.csv(here("Input","qpcr","qpcr.dilutions.csv"))
-qpcr_data <- read.csv(here("Input","qpcr","cutthroat_qpcr_results.csv"))
+qpcr_data <- readRDS(here("Output", "qpcr", "qpcr_only_results.RDS"))
 
 ```
 
@@ -44,7 +45,9 @@ extracts %>%
   filter(!str_detect(creek, "EB")) %>%
   ggplot() +
   geom_point(aes(x = date, y = qubit.ng.ul, color=factor(location))) +
-  facet_wrap(~creek, ncol=5) +
+  #geom_point(aes(x = date, y = qubit.ng.ul)) +
+  facet_grid(~creek ~ location) +
+  #facet_wrap( ~ creek ~ location) %>% 
   scale_color_viridis_d() +
   theme_bw() +  
   labs(y = "Total DNA (ng/uL extract)", x = "Date", color = "Sampling Location") + 
@@ -56,14 +59,66 @@ extracts %>%
 ```{r pcr post pcr1}
 
 meta_postpcr1 %>% 
-  #filter(!str_detect(creek, "EB")) %>%
+  filter(!str_detect(Creek, "Kangaroo")) %>%
+  mutate(date=date_build(Year,Month)) %>%
   ggplot() +
-  geom_point(aes(x = Month, y = Qubit.ng.ul, color=factor(Station))) +
-  facet_wrap(~Creek) +
+  geom_point(aes(x = date, y = Qubit.ng.ul, color=factor(Station))) +
+  facet_grid(~Creek ~Station) +
   scale_color_viridis_d() +
   theme_bw() +  
   labs(y = "MiFish DNA (ng/uL amplicon)", x = "Date", color = "Sampling Location") + 
   theme(axis.text.y = element_text(size = 8),
         axis.text.x = element_text(size = 8, angle = 45, hjust=1))
+
+```
+
+```{r cutthroat padden qpcr}
+
+qpcr_data %>%
+  filter(Type != "STANDARD") %>%
+  ggplot(aes(x = station, y = Ct)) +
+  geom_point() +
+  facet_wrap( ~ time ~ creek)
+
+```
+
+```{r metabarcoding cutthroat padden only}
+
+species.padden.clarkii <- meta_reads %>% 
+  filter(str_detect(Sample_name, "4Pad")) %>% 
+  filter(str_detect(species, "Oncorhynchus clarkii")) %>% 
+  separate(Sample_name, into=c("marker","date","creek","site","bio_rep"), remove = TRUE) %>% 
+  select(-marker) %>% 
+  select(-species) 
+
+ggplot(species.padden.clarkii, aes(x=date, y=tot)) +
+  geom_point(size=4) +
+  theme_bw() +
+  facet_wrap(~site, ncol = 1) +
+  labs(x="Month",y="# of reads") +
+  ggtitle('Cutthroat Reads')
+
+
+```
+
+```{r cutthroat padden simple qpcr meta}
+
+cut.seq <- species.padden.clarkii %>% 
+  unite(c(date,creek,site,bio_rep), col = "Sample", remove = T, sep=".") 
+
+cut.qpcr <- qpcr_data %>% 
+  dplyr::select(Sample, mean_corrected) %>% 
+  distinct() 
+
+cut.both <- full_join(cut.seq, cut.qpcr) %>% 
+  replace_na(list(tot=0, mean_corrected=0))
+
+ggplot(cut.both, aes(y=tot, x=mean_corrected)) +
+  geom_point(size=4) +
+  theme_bw() +
+  scale_y_log10() +
+  labs(y="Metabarcoding cutthroat reads", x="qPCR cutthroat") +
+  ggtitle('Cutthroat Reads vs. qPCR')
+
 
 ```

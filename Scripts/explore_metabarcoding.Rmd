@@ -60,14 +60,14 @@ So 61 of our 114 hashes annotated are to species level. Let's see how many reads
 
 ```{r reads and taxonomic resolution}
 total.reads <- sum(ASV.table$nReads)
-# we are working with 30,354,877 reads total - WOW
+# we are working with 33,063,421 reads total - WOW
 
 total.asvs <- length(unique(ASV.table$Hash))
-# and those 30M reads come from 20,116 ASVs 
+# and those 30M reads come from 23,011 ASVs 
 
 annotated.asvs <- intersect(annotations$representative, ASV.table$Hash)
-# 91 ASVs that were found in our environmental samples were annotated to something (any taxonomic level)
-# reminder that the big key of annotations here also includes some other samples (mock communities) - usually this would be weird that there are 114 annotations and so therefore some annotations are not used - but here the key is bigger than the dataset we are applying (the actual creek samples)
+# 92 ASVs that were found in our environmental samples were annotated to something (any taxonomic level)
+# reminder that the big key of annotations here also includes some other samples (mock communities) - usually this would be weird that there are 116 annotations and so therefore some annotations are not used - but here the key is bigger than the dataset we are applying (the actual creek samples)
 # another reminder that before we annotated, we removed any ASVs longer than 200 bp
 
 annotated.asvs.not.used <- annotations %>% filter(representative %in% setdiff(annotations$representative, setdiff(annotations$representative, ASV.table$Hash)))
@@ -80,7 +80,7 @@ annotated.reads <- ASV.table %>%
   filter(Hash %in% annotations$representative) 
 
 total.annotated.reads <- sum(annotated.reads$nReads)
-# great - 22,967,816 reads are annotated - these come from the 91 annotated ASVs in the dataset 
+# great - 24,476,767 reads are annotated - these come from the 91 annotated ASVs in the dataset 
 
 check <- setdiff(annotated.asvs, unique(annotated.reads$Hash))
 # we knew this but good to double check 
@@ -108,20 +108,48 @@ species.table <- ASV.table %>%
   summarise(tot = sum(nReads)) 
 
 total.annotated.species.reads <- sum(species.table$tot)
+# 20,395,046 
+
+percent.species <- total.annotated.species.reads / total.annotated.reads *100 
+# wow so 83% of our annotated reads are to species level - that is pretty good
 
 species.table.no.kangaroo <- species.table %>% 
-  filter(!str_detect(Sample_name, "Kangaroo"))
+  filter(!str_detect(Sample_name, "Kangaroo")) 
 
 mostcommonspecies <- species.table.no.kangaroo %>% 
   group_by(species) %>% 
-  summarize(species.total = sum(tot))
+  summarize(species.total = sum(tot)) 
+
+write_rds(species.table.no.kangaroo, file=here("Output", "metabarcoding", "species.table.RDS"))
+
+```
+
+```{r filter based on kangaroo by threshold}
+
+# 136 reads of kangaroo in one real sample - so let's remove anything less than that?? 
+
+clean.species.table <- species.table.no.kangaroo %>% 
+  filter(tot > 136) 
+
+# then remove things taht only show up once? 
+
+clean.species.table <- clean.species.table %>% 
+  filter(species != "Bos taurus") %>% 
+  filter(species != "Colaptes auratus") %>% 
+  filter(species != "Gobio gobio") %>% 
+  filter(species != "Neovison vison") %>% 
+  filter(species != "Neurotrichus gibbsii") %>% 
+  filter(species != "Oncorhynchus keta") %>% 
+  filter(species != "Regulus satrapa") %>% 
+  filter(species != "Salmo trutta")
 
 ```
 
 Let's try to make a nice summary plot of presence absence in creeks over time 
 
 ```{r summary plot}
-summary.df <- species.table.no.kangaroo %>% 
+# summary.df <- species.table.no.kangaroo %>% 
+summary.df <- clean.species.table %>% 
   separate(Sample_name, into=c("marker","date","creek","site","bio_rep"), remove = TRUE) %>%
   mutate(., date = case_when(date == "0321" ~ "21-03",
                              date == "0421" ~ "21-04",
@@ -148,13 +176,10 @@ ggplot(summary.df, aes(date, species, width=0.7, height=0.7)) +
   geom_tile(size=2) +
   facet_wrap(~creek) +
   theme_bw() +
-  labs(x = "Taxon", y = "Sample ID", fill="Upstream index - Downstream index") +
-  ggtitle("MiFish - Salmonids - Difference in Upstream/Downstream eDNA Index") +
-  scale_fill_distiller(palette = "RdBu") +
+  labs(x = "Taxon", y = "Sample ID") +
   scale_x_discrete(guide = guide_axis(angle = 45))
 
 summary.df %>% 
-  left_join(annotations, by = "species") %>% 
   #mutate(species = fct_reorder(species, desc(order))) %>%
   ggplot(aes(x = date, y = species, color = class)) +
   geom_point(shape=20, aes(size = 4))  +
@@ -202,12 +227,25 @@ species.padden.clarkii <- species.table %>%
   filter(str_detect(Sample_name, "4Pad")) %>% 
   filter(str_detect(species, "Oncorhynchus clarkii")) %>% 
   rename(Sample_ID = Sample_name) %>% 
-  left_join(metadata, by = "Sample_ID")
+  left_join(metadata, by = "Sample_ID") %>% 
+  mutate(., Month.year = case_when(Month.year == "321" ~ "21-03",
+                             Month.year == "421" ~ "21-04",
+                             Month.year == "521" ~ "21-05",
+                             Month.year == "621" ~ "21-06",
+                             Month.year == "721" ~ "21-07",
+                             Month.year == "821" ~ "21-08",
+                             Month.year == "921" ~ "21-09",
+                             Month.year == "1021" ~ "21-10",
+                             Month.year == "1121" ~ "21-11",
+                             Month.year == "1221" ~ "21-12",
+                             Month.year == "122" ~ "22-01",
+                             Month.year == "222" ~ "22-02",
+                             TRUE ~ Month.year))
 
 ggplot(species.padden.clarkii, aes(x=Month.year, y=tot)) +
   geom_point(size=4) +
   theme_bw() +
-  facet_wrap(~Station) +
+  facet_wrap(~Station, ncol = 1) +
   labs(x="Month",y="# of reads") +
   ggtitle('Cutthroat Reads')
 
