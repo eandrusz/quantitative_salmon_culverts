@@ -21,58 +21,59 @@ source(here("Scripts", "qm_qpcr_model", "simFunctions.R")) #functions to generat
 ```
 
 ```{r load qPCR data - old}
-qPCRfiles <- list.files(path = here("Input","qpcr","Results"), pattern = "*data", recursive = T, full.names = T)
-
-# plate1 <- read_excel(qPCRfiles[5], sheet = "Results", skip=6)
-# plate2 <- read_excel(qPCRfiles[9], sheet = "Results", skip=6)
-# plate2[34:36,4] <- "UNKNOWN"
-# plate3 <- read_excel(qPCRfiles[10], sheet = "Results", skip=6)
-# plate4 <- read_excel(qPCRfiles[12], sheet = "Results", skip=6)
-# plate4[85:87,4] <- "NTC"
-# plate5 <- read_excel(qPCRfiles[11], sheet = "Results", skip=6)
-# plate5[85:87,4] <- "NTC"
-
-plates <- list()
-for (i in 1:length(qPCRfiles)) {
-plates[[i]] <- read_excel(qPCRfiles[i], sheet = "Results", skip=6)
-}
-qPCRdata <- bind_rows(plates, .id="Plate")
-
-colnames(qPCRdata)[8] <- "Ct"
-colnames(qPCRdata)[3] <- "Sample"
-colnames(qPCRdata)[4] <- "Assay"
-
-qPCRdata <- qPCRdata %>% 
-  filter(Assay == "Cutt") %>% 
-  select(c("Plate", "Sample", "Task", "Ct", "Quantity")) %>% 
-  filter(Task != "NA") %>% 
-  filter(Task != "NTC") %>% 
-  mutate(z = ifelse(Ct == "Undetermined", 0, 1),
-         Ct = ifelse(Ct == "Undetermined", 99, Ct)) %>% 
-  # mutate(Plate = ifelse(Plate == 2 & Type == "UNKNOWN", 1, Plate)) %>%  #temporarily treat plate 2 as arising from plate 1 standards
-  # filter(Plate != 2) %>%  #remove offending standards for the moment 
-  mutate(Ct = as.numeric(Ct)) %>% 
-  mutate(conc = NA)
-  
-qPCRdata$conc[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task == "STANDARD"] %>% as.numeric()
-qPCRdata$Sample[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task == "STANDARD"] 
-
-qPCRdata <- qPCRdata %>% 
-  unite(c(Plate,Sample), col = "plateSample", remove = F) %>% 
-  mutate(plateSample_idx = match(plateSample, unique(plateSample))) %>% 
-  left_join(read_csv(here("Input","qpcr","qpcr.dilutions.csv")) %>% dplyr::select(Sample, Final.qpcr.Dilution)) %>% 
-  rename(dilution = Final.qpcr.Dilution) 
+# qPCRfiles <- list.files(path = here("Input","qpcr","Results"), pattern = "*data", recursive = T, full.names = T)
+# 
+# # plate1 <- read_excel(qPCRfiles[5], sheet = "Results", skip=6)
+# # plate2 <- read_excel(qPCRfiles[9], sheet = "Results", skip=6)
+# # plate2[34:36,4] <- "UNKNOWN"
+# # plate3 <- read_excel(qPCRfiles[10], sheet = "Results", skip=6)
+# # plate4 <- read_excel(qPCRfiles[12], sheet = "Results", skip=6)
+# # plate4[85:87,4] <- "NTC"
+# # plate5 <- read_excel(qPCRfiles[11], sheet = "Results", skip=6)
+# # plate5[85:87,4] <- "NTC"
+# 
+# plates <- list()
+# for (i in 1:length(qPCRfiles)) {
+# plates[[i]] <- read_excel(qPCRfiles[i], sheet = "Results", skip=6)
+# }
+# qPCRdata <- bind_rows(plates, .id="Plate")
+# 
+# colnames(qPCRdata)[8] <- "Ct"
+# colnames(qPCRdata)[3] <- "Sample"
+# colnames(qPCRdata)[4] <- "Assay"
+# 
+# qPCRdata <- qPCRdata %>% 
+#   filter(Assay == "Cutt") %>% 
+#   select(c("Plate", "Sample", "Task", "Ct", "Quantity")) %>% 
+#   filter(Task != "NA") %>% 
+#   filter(Task != "NTC") %>% 
+#   mutate(z = ifelse(Ct == "Undetermined", 0, 1),
+#          Ct = ifelse(Ct == "Undetermined", 99, Ct)) %>% 
+#   # mutate(Plate = ifelse(Plate == 2 & Type == "UNKNOWN", 1, Plate)) %>%  #temporarily treat plate 2 as arising from plate 1 standards
+#   # filter(Plate != 2) %>%  #remove offending standards for the moment 
+#   mutate(Ct = as.numeric(Ct)) %>% 
+#   mutate(conc = NA)
+#   
+# qPCRdata$conc[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task == "STANDARD"] %>% as.numeric()
+# qPCRdata$Sample[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task == "STANDARD"] 
+# 
+# qPCRdata <- qPCRdata %>% 
+#   unite(c(Plate,Sample), col = "plateSample", remove = F) %>% 
+#   mutate(plateSample_idx = match(plateSample, unique(plateSample))) %>% 
+#   left_join(read_csv(here("Input","qpcr","qpcr.dilutions.csv")) %>% dplyr::select(Sample, Final.qpcr.Dilution)) %>% 
+#   rename(dilution = Final.qpcr.Dilution) 
 
 ```
 
 ```{r load qPCR data - new}
-qPCRdata <- read.csv(file=here("Output","qpcr","not_inhibited_cutthroat.csv"))
+qPCRdata <- read.csv(file=here("Output","qpcr","not_inhibited_cutthroat.csv")) 
+  
 
 qPCRdata <- qPCRdata %>% 
   mutate(Task=ifelse(str_detect(Sample,"St"), "STANDARD", "UNKNOWN")) %>% 
-  filter(! is.na(Ct)) %>% 
+  #filter(! is.na(Ct)) %>% 
   mutate(z = ifelse(is.na(Ct), 0, 1),
-         Ct = ifelse(is.na(Ct), 999, Ct)) %>% 
+         Ct = ifelse(is.na(Ct), 45, Ct)) %>% 
   mutate(Ct = as.numeric(Ct)) %>% 
   mutate(conc = NA) %>% 
   mutate(Quantity = 0) %>% 
@@ -86,6 +87,7 @@ qPCRdata <- qPCRdata %>%
                              Sample == "St8" ~ 1,
                              TRUE ~ Quantity))
   
+  
 qPCRdata$conc[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task == "STANDARD"] %>% as.numeric()
 qPCRdata$Sample[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task == "STANDARD"] 
 
@@ -95,6 +97,12 @@ qPCRdata <- qPCRdata %>%
   left_join(read_csv(here("Input","qpcr","qpcr.dilutions.csv")) %>% dplyr::select(Sample, Final.qpcr.Dilution)) %>% 
   rename(dilution = Final.qpcr.Dilution) 
 
+#QC filter
+qPCRdata <- qPCRdata %>%
+  group_by(Plate, plateSample) %>% 
+  mutate(sdCt = sd(Ct)) %>% 
+  filter(sdCt < 1.2) #really bad triplicates
+
 ```
 
 
@@ -103,8 +111,8 @@ qPCRdata <- qPCRdata %>%
 a <- readRDS(here("Output", "metabarcoding", "envirodata.salmonids.for.qm.rds")) %>% 
   filter(species != "") %>% 
   filter(time != "NA") %>% 
-  filter(creek == "4Pad") %>% 
-  filter(time %in% unique(qPCRdata$time))
+  filter(creek == "4Pad") 
+  #filter(time %in% unique(qPCRdata$time))
 
 d <- readRDS(here("Input", "mockcommunity", "MiFishmockdata.RDS")) %>% 
   mutate(time = 1,
@@ -192,10 +200,21 @@ Quick check std curves
 ```{r}
 qPCRdata %>% 
   filter(Task == "STANDARD") %>% 
-  filter(z == 1) %>% 
+  filter(Plate == 2) %>% 
+  #filter(z == 1) %>% 
   ggplot(aes(x= log(conc), y = Ct, color = as.factor(Plate))) +
     geom_point() +
     geom_smooth(method = "lm")
+
+qPCRdata %>% 
+  filter(Task == "STANDARD") %>% 
+  group_by(Plate, plateSample) %>% 
+  summarise(Ct = Ct,
+            sd_Ct = sd(Ct)) %>% 
+  mutate(f = exp(-6 + .15*Ct)) %>% #estimating mean-variance relationship
+  ggplot(aes(x = Ct, y = sd_Ct)) +
+    geom_point() +
+    geom_point(aes(x = Ct, y = f), color = "red")
 
 ```
 
@@ -218,8 +237,8 @@ stan_qPCR_data <- list(
   y = qPCRdata$Ct,
   z = qPCRdata$z,
   known_concentration = qPCRdata %>% filter(Task == "STANDARD") %>% dplyr::select(plateSample_idx, conc) %>% distinct() %>% pull(conc),
-  stdCurvePrior_intercept = c(42, 1), #normal distr, mean and sd
-  stdCurvePrior_slope = c(-3, .5) #normal distr, mean and sd
+  stdCurvePrior_intercept = c(39, 3), #normal distr, mean and sd ; NOTE make hierarch across plates
+  stdCurvePrior_slope = c(-3, .5) #normal distr, mean and sd ; NOTE make hierarch across plates
 )
 
 
@@ -229,44 +248,63 @@ stan_qPCR_data <- list(
 qPCR calibration and estimating absolute concentrations from enviro samples using qPCR.
 
 ```{r fit qPCR calibration model and estimate concentration of enviro samples, results='hide'}
+# initf1 <- function(chain_id = 1, Nsamples = stan_qPCR_data$NSamples) {
+# list(mu = runif(1, 10,40),
+#      sigma = runif(Nsamples, .01, 1))
+# }
+# n_chains <- 3
+# initf2 <- lapply(1:n_chains, function(id) initf1(chain_id = id))
 
-qMod = stan(file = here("Scripts", "qm_qpcr_model", "qPCR_calibration_multiplate.stan") ,data = stan_qPCR_data,
+qMod = stan(file = here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan") ,data = stan_qPCR_data,
                      verbose = FALSE, chains = 3, thin = 1,
-                     warmup = 500, iter = 2000,
+                     warmup = 500, iter = 1500,
                      control = list(adapt_init_buffer = 175,
                                     max_treedepth=12,
                                     stepsize=0.01,
                                     adapt_delta=0.7,
                                     metric="diag_e"),
+                     #init = initf2,
                      #pars = stan_pars,
                      refresh = 10,
                      boost_lib = NULL,
-                     #init = stan_init_f2(n.chain=N_CHAIN,N_species=N_species),
                      sample_file = "temp/tmp.csv"
       )
 
-#plot(qMod, par = c("beta_std_curve_1", "gamma_0", "gamma_1"))
+#plot(qMod, par = c("beta_std_curve_1"))
+#plot(qMod, par = c("gamma_1"))
+#plot(qMod, par = c("gamma_0"))
+#plot(qMod, par = c("mu"))
 #plot(qMod, par = c("beta_std_curve_0"))
 #plot(qMod, par = c("phi_0", "phi_1"))
 # shinystan::launch_shinystan(qMod)
+
+plot(qMod, par = c("envir_concentration"))
+plot(qMod, par = paste0("envir_concentration", "[", 80:90, "]"))
+
+traceplot(qMod, par = paste0("envir_concentration", "[", 88:90, "]"))
+
+summary(qMod)$summary[,"Rhat"] %>% sort(decreasing = T) %>% head()
+
 ```
 
 Visualize std curve with CI
 
 ```{r}
 
+#note: this is conditioned on detection -- doesn't have dropouts here.
+
 PLATE = 3
 
 pp_beta0 <- extract(qMod, "beta_std_curve_0")$beta_std_curve_0[,PLATE]
 pp_beta1 <- extract(qMod, "beta_std_curve_1")$beta_std_curve_1[,PLATE]
 # pp_sigma <- extract(qMod, "sigma_std_curve")$sigma_std_curve
-pp_gamma_0 <- extract(qMod, "gamma_0")$gamma_0[,PLATE]
+pp_gamma_0 <- extract(qMod, "gamma_0")$gamma_0 #[,PLATE]
 pp_gamma_1 <- extract(qMod, "gamma_1")$gamma_1[,PLATE]
 
 
 conc <- runif(length(pp_beta0), 0, 6)
 mu <- pp_beta0 + pp_beta1*conc
-sigma <- exp(pp_gamma_0 + pp_gamma_1*mu)
+sigma <- exp(pp_gamma_0 + pp_gamma_1*conc)
 y<-NA
 for(i in 1:length(pp_beta0)){y[i] <- rnorm(1, mean = mu[i], sd = sigma[i])}
 
@@ -286,8 +324,8 @@ results_qPCR <- qPCRdata %>%
   filter(Task != "STANDARD") %>% 
   ungroup() %>% 
   left_join(data.frame(
-  Sample = qPCRdata %>% filter(Task != "STANDARD") %>% dplyr::select(Sample) %>% distinct()) %>% 
-  mutate(bayes_est = 10^(summary(qMod, par = "envir_concentration")$summary[,1]),
+    qPCRdata %>% filter(Task != "STANDARD") %>% dplyr::select(Sample) %>% distinct()) %>% 
+    mutate(bayes_est = 10^(summary(qMod, par = "envir_concentration")$summary[,1]),
          bayes_25pct = 10^(summary(qMod, par = "envir_concentration")$summary[,5]),
          bayes_75pct = 10^(summary(qMod, par = "envir_concentration")$summary[,7]))
   ) %>% 
@@ -316,7 +354,7 @@ results_qPCR %>%
     scale_y_continuous(trans='log10')
 
 nondetects <- results_qPCR %>% 
-  filter(Ct == 9999)
+  filter(z == 0)
     
 
 #visualize non-detects
