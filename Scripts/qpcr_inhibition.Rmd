@@ -26,6 +26,17 @@ colnames(plate)[2] <- "Sample"
 colnames(plate)[3] <- "Assay"
 plate$Plate <- as.numeric(filename4)
 
+plate <- plate %>% 
+  mutate(., Sample = case_when(Well == "A1" ~ "St1", Well == "A2" ~ "St1", Well == "A3" ~ "St1",
+                             Well == "B1" ~ "St2", Well == "B2" ~ "St2", Well == "B3" ~ "St2",
+                             Well == "C1" ~ "St3", Well == "C2" ~ "St3", Well == "C3" ~ "St3",
+                             Well == "D1" ~ "St4", Well == "D2" ~ "St4", Well == "D3" ~ "St4",
+                             Well == "E1" ~ "St5", Well == "E2" ~ "St5", Well == "E3" ~ "St5",
+                             Well == "F1" ~ "St6", Well == "F2" ~ "St6", Well == "F3" ~ "St6",
+                             Well == "G1" ~ "St7", Well == "G2" ~ "St7", Well == "G3" ~ "St7",
+                             Well == "H1" ~ "St8", Well == "H2" ~ "St8", Well == "H3" ~ "St8",
+                             TRUE ~ Sample))
+
 IPCdata <- plate %>% 
   filter(Assay == "IPC") %>% 
   select(c("Plate", "Well","Sample", "Ct")) %>% 
@@ -64,7 +75,7 @@ seconddilutions <- alltodilute%>%
   filter(Plate > 13)
 
 write.csv(seconddilutions, file=here("Output","qpcr","second_inhibition.csv"), row.names=FALSE)
-
+# NONE!! 
 
 ```
 
@@ -83,6 +94,17 @@ colnames(plate)[8] <- "Ct" ## USING AVERAGE CT OF THREE REPLICATES - could go ba
 colnames(plate)[2] <- "Sample"
 colnames(plate)[3] <- "Assay"
 plate$Plate <- as.numeric(filename4)
+
+plate <- plate %>% 
+  mutate(., Sample = case_when(Well == "A1" ~ "St1", Well == "A2" ~ "St1", Well == "A3" ~ "St1",
+                             Well == "B1" ~ "St2", Well == "B2" ~ "St2", Well == "B3" ~ "St2",
+                             Well == "C1" ~ "St3", Well == "C2" ~ "St3", Well == "C3" ~ "St3",
+                             Well == "D1" ~ "St4", Well == "D2" ~ "St4", Well == "D3" ~ "St4",
+                             Well == "E1" ~ "St5", Well == "E2" ~ "St5", Well == "E3" ~ "St5",
+                             Well == "F1" ~ "St6", Well == "F2" ~ "St6", Well == "F3" ~ "St6",
+                             Well == "G1" ~ "St7", Well == "G2" ~ "St7", Well == "G3" ~ "St7",
+                             Well == "H1" ~ "St8", Well == "H2" ~ "St8", Well == "H3" ~ "St8",
+                             TRUE ~ Sample))
 
 IPCdata <- plate %>% 
   filter(Assay == "IPC") %>% 
@@ -116,8 +138,8 @@ nodilute <- list()
 for (i in 1:length(qPCRfiles)) { 
 nodilute[[i]] <- qpcr_good_data(i)
 }
-allnodilute <- do.call(rbind, nodilute)  %>% 
-  filter(! str_detect(Sample,"EB"))
+allnodilute <- do.call(rbind, nodilute)  
+ # %>% filter(! str_detect(Sample,"EB"))
 
 write.csv(allnodilute, file=here("Output","qpcr","not_inhibited_cutthroat.csv"), row.names=FALSE)
 
