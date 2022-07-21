@@ -34,7 +34,7 @@ parameters {
   // vector<upper=0>[Nplates]  gamma_0; //intercept to scale variance w the mean
   vector<upper=0>[Nplates]  gamma_1; //slope to scale variance w the mean
   // vector[Nplates] phi_0;
-  real phi_0;
+  // real phi_0;
   // vector[Nplates] phi_1;
   real phi_1;
   // real phi_0;
@@ -76,7 +76,7 @@ transformed parameters{
     sigma[plateSample_idx[i]] = exp(gamma_0  
                                        + gamma_1[plate_idx[i]]*Concentration[plateSample_idx[i]]);
                                   
-    theta[plateSample_idx[i]] = inv_logit(phi_0 + phi_1*Concentration[plateSample_idx[i]]);
+    theta[plateSample_idx[i]] = inv_logit(phi_1*Concentration[plateSample_idx[i]]); //phi_0 +
                                   
   }
 }
@@ -122,6 +122,18 @@ model {
   // phi_1 ~ normal(phi_1_hyperMean, phi_hyperSigma_1);
   
   phi_1 ~ normal(5, 2);  
-  phi_0 ~ normal(0, 2);
+  // phi_0 ~ normal(0, 2);
   
 }
+
+generated quantities {
+
+  vector[Nplates] efficiency;
+
+  for (i in 1:Nplates){
+    efficiency[i] = 10^(-1 / beta_std_curve_1[i]) - 1;  
+  }
+  
+}
+
+

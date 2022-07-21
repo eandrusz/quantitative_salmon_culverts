@@ -73,7 +73,7 @@ qPCRdata <- qPCRdata %>%
   mutate(Task=ifelse(str_detect(Sample,"St"), "STANDARD", "UNKNOWN")) %>% 
   #filter(! is.na(Ct)) %>% 
   mutate(z = ifelse(is.na(Ct), 0, 1),
-         Ct = ifelse(is.na(Ct), 45, Ct)) %>% 
+         Ct = ifelse(is.na(Ct), 99, Ct)) %>% 
   mutate(Ct = as.numeric(Ct)) %>% 
   mutate(conc = NA) %>% 
   mutate(Quantity = 0) %>% 
@@ -93,15 +93,18 @@ qPCRdata$Sample[qPCRdata$Task == "STANDARD"] <- qPCRdata$Quantity[qPCRdata$Task 
 
 qPCRdata <- qPCRdata %>% 
   unite(c(Plate,Sample), col = "plateSample", remove = F) %>% 
-  mutate(plateSample_idx = match(plateSample, unique(plateSample))) %>% 
-  left_join(read_csv(here("Input","qpcr","qpcr.dilutions.csv")) %>% dplyr::select(Sample, Final.qpcr.Dilution)) %>% 
-  rename(dilution = Final.qpcr.Dilution) 
+  mutate(plateSample_idx = match(plateSample, unique(plateSample))) 
+
+  # left_join(read_csv(here("Input","qpcr","qpcr.dilutions.csv")) %>% dplyr::select(Sample, Final.qpcr.Dilution)) %>% 
+  # rename(dilution = Final.qpcr.Dilution) 
 
 #QC filter
 qPCRdata <- qPCRdata %>%
   group_by(Plate, plateSample) %>% 
   mutate(sdCt = sd(Ct)) %>% 
-  filter(sdCt < 1.2) #really bad triplicates
+  filter(sdCt < 1.5) %>% #really bad triplicates
+  ungroup() %>% 
+  mutate(plateSample_idx = match(plateSample, unique(plateSample))) #reindex
 
 ```
 
@@ -206,15 +209,15 @@ qPCRdata %>%
     geom_point() +
     geom_smooth(method = "lm")
 
-qPCRdata %>% 
-  filter(Task == "STANDARD") %>% 
-  group_by(Plate, plateSample) %>% 
-  summarise(Ct = Ct,
-            sd_Ct = sd(Ct)) %>% 
-  mutate(f = exp(-6 + .15*Ct)) %>% #estimating mean-variance relationship
-  ggplot(aes(x = Ct, y = sd_Ct)) +
-    geom_point() +
-    geom_point(aes(x = Ct, y = f), color = "red")
+# qPCRdata %>% 
+#   filter(Task == "STANDARD") %>% 
+#   group_by(Plate, plateSample) %>% 
+#   summarise(Ct = Ct,
+#             sd_Ct = sd(Ct)) %>% 
+#   mutate(f = exp(-6 + .15*Ct)) %>% #estimating mean-variance relationship
+#   ggplot(aes(x = Ct, y = sd_Ct)) +
+#     geom_point() +
+#     geom_point(aes(x = Ct, y = f), color = "red")
 
 ```
 
@@ -227,18 +230,18 @@ type <- qPCRdata %>% dplyr::select(plateSample, Task) %>% distinct() %>% pull(Ta
 
 stan_qPCR_data <- list(
   Nplates = length(unique(qPCRdata$Plate)),
-  Nobs = length(qPCRdata$Ct),
+  Nobs = nrow(qPCRdata),
   NSamples = length(unique(qPCRdata$plateSample)),
   NstdSamples = qPCRdata %>% filter(Task == "STANDARD") %>% dplyr::select(plateSample) %>% distinct() %>% nrow(),
   plate_idx = match(qPCRdata$Plate, unique(qPCRdata$Plate)),
   std_idx =  which(type=="STANDARD"),
   unkn_idx = which(type != "STANDARD"),
-  plateSample_idx = match(qPCRdata$plateSample, unique(qPCRdata$plateSample)),
+  plateSample_idx = qPCRdata$plateSample_idx, #match(qPCRdata$plateSample, unique(qPCRdata$plateSample)),
   y = qPCRdata$Ct,
   z = qPCRdata$z,
   known_concentration = qPCRdata %>% filter(Task == "STANDARD") %>% dplyr::select(plateSample_idx, conc) %>% distinct() %>% pull(conc),
-  stdCurvePrior_intercept = c(39, 3), #normal distr, mean and sd ; NOTE make hierarch across plates
-  stdCurvePrior_slope = c(-3, .5) #normal distr, mean and sd ; NOTE make hierarch across plates
+  stdCurvePrior_intercept = c(39, 3), #normal distr, mean and sd ; hyperpriors
+  stdCurvePrior_slope = c(-3, .5) #normal distr, mean and sd ; hyperpriors
 )
 
 
@@ -257,7 +260,7 @@ qPCR calibration and estimating absolute concentrations from enviro samples usin
 
 qMod = stan(file = here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan") ,data = stan_qPCR_data,
                      verbose = FALSE, chains = 3, thin = 1,
-                     warmup = 500, iter = 1500,
+                     warmup = 500, iter = 2500,
                      control = list(adapt_init_buffer = 175,
                                     max_treedepth=12,
                                     stepsize=0.01,
@@ -275,15 +278,17 @@ qMod = stan(file = here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.
 #plot(qMod, par = c("gamma_0"))
 #plot(qMod, par = c("mu"))
 #plot(qMod, par = c("beta_std_curve_0"))
-#plot(qMod, par = c("phi_0", "phi_1"))
+#plot(qMod, par = c("phi_1"))
+#plot(qMod, par = c("efficiency"))
 # shinystan::launch_shinystan(qMod)
 
-plot(qMod, par = c("envir_concentration"))
-plot(qMod, par = paste0("envir_concentration", "[", 80:90, "]"))
-
-traceplot(qMod, par = paste0("envir_concentration", "[", 88:90, "]"))
-
-summary(qMod)$summary[,"Rhat"] %>% sort(decreasing = T) %>% head()
+# plot(qMod, par = c("envir_concentration"))
+# plot(qMod, par = paste0("envir_concentration", "[", 80:90, "]"))
+# 
+# traceplot(qMod, par = "gamma_0")
+# traceplot(qMod, par = paste0("envir_concentration", "[", 88:90, "]"))
+# 
+# summary(qMod)$summary[,"Rhat"] %>% sort(decreasing = T) %>% head()
 
 ```
 
@@ -302,6 +307,7 @@ pp_gamma_0 <- extract(qMod, "gamma_0")$gamma_0 #[,PLATE]
 pp_gamma_1 <- extract(qMod, "gamma_1")$gamma_1[,PLATE]
 
 
+
 conc <- runif(length(pp_beta0), 0, 6)
 mu <- pp_beta0 + pp_beta1*conc
 sigma <- exp(pp_gamma_0 + pp_gamma_1*conc)
@@ -311,9 +317,14 @@ for(i in 1:length(pp_beta0)){y[i] <- rnorm(1, mean = mu[i], sd = sigma[i])}
 (plotstd <- data.frame(y, conc) %>% 
   ggplot(aes(x = conc, y = y)) +
     geom_point(alpha = .1) +
-    geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 1), aes(x = log10(conc), y = Ct), color = "red") +
-    #geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 0), aes(x = log10(conc), y = 20), color = "blue") +
     ggtitle(paste("Plate ", PLATE)))
+
+(p1 <- plotstd +
+    geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 1), aes(x = log10(conc), y = Ct), color = "red"))
+    #geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 0), aes(x = log10(conc), y = 20), color = "blue") +
+    
+
+
 
 ```
 
@@ -324,45 +335,58 @@ results_qPCR <- qPCRdata %>%
   filter(Task != "STANDARD") %>% 
   ungroup() %>% 
   left_join(data.frame(
-    qPCRdata %>% filter(Task != "STANDARD") %>% dplyr::select(Sample) %>% distinct()) %>% 
-    mutate(bayes_est = 10^(summary(qMod, par = "envir_concentration")$summary[,1]),
-         bayes_25pct = 10^(summary(qMod, par = "envir_concentration")$summary[,5]),
-         bayes_75pct = 10^(summary(qMod, par = "envir_concentration")$summary[,7]))
+    qPCRdata %>% filter(Task != "STANDARD") %>% dplyr::select(plateSample) %>% distinct()) %>% 
+    mutate(mean_corrected = 10^(summary(qMod, par = "envir_concentration")$summary[,1]),
+         ci25_corrected = 10^(summary(qMod, par = "envir_concentration")$summary[,5]),
+         ci75_corrected = 10^(summary(qMod, par = "envir_concentration")$summary[,7]))
   ) %>% 
-    mutate(mean_corrected = bayes_est ,
-         ci25_corrected = bayes_25pct ,
-         ci75_corrected = bayes_75pct ) %>% 
-  # mutate(mean_corrected = bayes_est * dilution,
-  #        ci25_corrected = bayes_25pct * dilution,
-  #        ci75_corrected = bayes_75pct * dilution)
   separate(Sample, into = c("time","creek","station","biorep"), remove = F) %>% 
   mutate(., creek = case_when(creek == "4Sqm" ~ "5Sqm",
                               creek == "Sqm" ~ "5Sqm",
                              TRUE ~ creek)) %>% 
-  filter(creek != "EB")
+  filter(creek != "EB") %>% 
+  left_join(
+    data.frame(
+      mu_est = summary(qMod, "mu")$summary[,"mean"],
+      mu_25ci = summary(qMod, "mu")$summary[,5],
+      mu_75ci = summary(qMod, "mu")$summary[,7],
+      plateSample_idx = unique(stan_qPCR_data$plateSample_idx))
+  ) %>% 
+  mutate(label = case_when(z == 0 ~ "Undetected",
+                           z == 1 & Task == "UNKNOWN" ~ "Environmental",
+                           z == 1 & Task == "STANDARD" ~ "Standard"))
 
-
+#Plot Fit
 plotstd +
-  geom_point(data = results_qPCR %>% filter(z == 1), aes(x = log10(mean_corrected), y = Ct, color = as.factor(Plate)))
+  geom_point(data = results_qPCR %>% filter(Plate == PLATE), 
+             aes(x = log10(mean_corrected), y = mu_est, color = label)) +
+  geom_segment(data = results_qPCR %>% filter(Plate == PLATE), 
+             aes(x = log10(mean_corrected), xend = log10(mean_corrected),
+                 y = mu_25ci, yend = mu_75ci,
+                 color = label)) +
+  geom_segment(data = results_qPCR %>% filter(Plate == PLATE), 
+             aes(x = log10(ci25_corrected), xend = log10(ci75_corrected),
+                 y = mu_est, yend = mu_est,
+                 color = label)) +
+  scale_colour_brewer(palette = 6, type = "qual") +
+  xlim(c(-2.2, 2)) + ylim(c(30, 46)) +
+  theme_bw()
 
 
 results_qPCR %>% 
   ggplot(aes(x = station, y = mean_corrected)) +
     geom_point() +
     geom_segment(aes(x = station, xend = station, y = ci25_corrected, yend = ci75_corrected)) +
-    facet_grid(~time ~creek) +
+    facet_grid(time ~creek) +
     scale_y_continuous(trans='log10')
 
-nondetects <- results_qPCR %>% 
-  filter(z == 0)
-    
-
-#visualize non-detects
+#detection limit
 results_qPCR %>% 
-  group_by(plateSample) %>% 
-  mutate(n = sum(z)) %>% 
-  filter(n < 3) 
-  
+  ggplot(aes(y = z, x = log(mean_corrected))) +
+    geom_point() +
+    geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+    xlab("Est log Concentration") + ylab("Detected vs Not") +
+    theme_bw()
 ```
 
 
