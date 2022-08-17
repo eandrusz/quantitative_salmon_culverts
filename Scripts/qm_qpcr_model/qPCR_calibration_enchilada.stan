@@ -96,7 +96,7 @@ model {
   //beta params hierarchical
   beta_std_curve_0_hyperMean ~ normal(stdCurvePrior_intercept[1], stdCurvePrior_intercept[2]);
   beta_std_curve_1_hyperMean ~ normal(stdCurvePrior_slope[1], stdCurvePrior_slope[2]);
-  hyperSigma_0 ~ gamma(1,1);
+  hyperSigma_0 ~ gamma(.5,.5);
   hyperSigma_1 ~ gamma(1,1);
   beta_std_curve_0 ~ normal(beta_std_curve_0_hyperMean, hyperSigma_0);
   beta_std_curve_1 ~ normal(beta_std_curve_1_hyperMean, hyperSigma_1);

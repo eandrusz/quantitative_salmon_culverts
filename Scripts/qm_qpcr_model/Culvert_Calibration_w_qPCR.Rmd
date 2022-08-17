@@ -71,7 +71,7 @@ qPCRdata <- read.csv(file=here("Output","qpcr","not_inhibited_cutthroat.csv"))
 
 qPCRdata <- qPCRdata %>% 
   mutate(Task=ifelse(str_detect(Sample,"St"), "STANDARD", "UNKNOWN")) %>% 
-  #filter(! is.na(Ct)) %>% 
+  filter(! is.na(Ct)) %>% 
   mutate(z = ifelse(is.na(Ct), 0, 1),
          Ct = ifelse(is.na(Ct), 99, Ct)) %>% 
   mutate(Ct = as.numeric(Ct)) %>% 
@@ -241,7 +241,7 @@ stan_qPCR_data <- list(
   z = qPCRdata$z,
   known_concentration = qPCRdata %>% filter(Task == "STANDARD") %>% dplyr::select(plateSample_idx, conc) %>% distinct() %>% pull(conc),
   stdCurvePrior_intercept = c(39, 3), #normal distr, mean and sd ; hyperpriors
-  stdCurvePrior_slope = c(-3, .5) #normal distr, mean and sd ; hyperpriors
+  stdCurvePrior_slope = c(-3, 1) #normal distr, mean and sd ; hyperpriors
 )
 
 
@@ -298,7 +298,7 @@ Visualize std curve with CI
 
 #note: this is conditioned on detection -- doesn't have dropouts here.
 
-PLATE = 3
+PLATE = 10
 
 pp_beta0 <- extract(qMod, "beta_std_curve_0")$beta_std_curve_0[,PLATE]
 pp_beta1 <- extract(qMod, "beta_std_curve_1")$beta_std_curve_1[,PLATE]
@@ -368,8 +368,9 @@ plotstd +
              aes(x = log10(ci25_corrected), xend = log10(ci75_corrected),
                  y = mu_est, yend = mu_est,
                  color = label)) +
+  xlab("(log10) DNA Concentration") + ylab("Estimated Ct") +
   scale_colour_brewer(palette = 6, type = "qual") +
-  xlim(c(-2.2, 2)) + ylim(c(30, 46)) +
+  xlim(c(-.2, 2)) + ylim(c(30, 40)) +
   theme_bw()
 
 
@@ -381,12 +382,12 @@ results_qPCR %>%
     scale_y_continuous(trans='log10')
 
 #detection limit
-results_qPCR %>% 
-  ggplot(aes(y = z, x = log(mean_corrected))) +
-    geom_point() +
-    geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-    xlab("Est log Concentration") + ylab("Detected vs Not") +
-    theme_bw()
+# results_qPCR %>% 
+#   ggplot(aes(y = z, x = log(mean_corrected))) +
+#     geom_point() +
+#     geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+#     xlab("Est log Concentration") + ylab("Detected vs Not") +
+#     theme_bw()
 ```
 
 
