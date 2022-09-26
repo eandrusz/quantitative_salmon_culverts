@@ -1,0 +1,53 @@
+---
+title: "NGN Salmon Time-Series Model"
+author: "Kelly"
+format: html
+editor: visual
+---
+
+## Inferring Contrafactual Data from the NGN Time Series
+
+At a given station in a given greek, there is some distribution of DNA concentration for a species. For simplicity, we focus on a single species and a single station (downstream or upstream) for the moment.
+
+The (log) DNA concentration in creek $i$ at time $t$ is distributed as $Y_{i,t} \sim \mathcal{N}(\mu_{i,t},\,\sigma^{2})$. We may choose to let $\sigma$ vary across creeks, time points, or with a covariate such as creek flow.
+
+We are interested in how the DNA concentration changes over time, so we assert that the expected value of DNA in a creek at time $t$, $\mu_{i,t}$, depends upon its value in the previous time step $t-1$, in some way. Further, we can let $\mu_{i,t}$ in, say, our focal Padden creek, depend upon the observations in other creeks (i.e., where creek $i \neq \text{Padden}$) if we think that similar environmental and demographic forces are affecting all creeks in similar ways. We can use these inferences to model data we cannot observe directly -- namely, a contrafactual scenario in which a human intervention did not occur -- to estimate the effect of that intervention.
+
+To share information across creeks, we could assert that the relationship between $\mu_{i,t}$ and $\mu_{i,t-1}$ has a consistent slope for all creeks within a timepoint -- that is, a species tends to be increasing (or decreasing) across all creeks within the same time interval. Our model would then look like this:
+
+$$
+Y_{i,t} \sim \mathcal{N}(\mu_{i,t},\,\sigma^{2})
+\\
+\mu_{i,t} = \mu_{i,t-1} + \beta_{t-1}\mu_{i,t-1} + \eta_{i,t}
+$$
+
+where the slope term, $\beta$, is shared across creeks for a given time point, and where $\eta$ is the additional change in concentration not otherwise explained by the autocorrelation.
+
+This model shares enough information across time points (within a creek) and across creeks (within a time point) that we can use it to infer DNA concentrations that we do not actually observe -- we treat the temporal/spatial points to be inferred as missing data, parameters to be estimated by the larger model.
+
+![Fig 1](Rplot1.jpeg)
+
+![Fig 2](Rplot2.jpeg)
+
+Moreover, we can use both upstream and downstream data from the same creeks and timepoints by adding an additional subscript. This gives us more information overall, and also gives us a way of measuring the effect of position (upstream vs downstream) in the creeks.
+
+If we let $d$ be a subscript indicating station ($d = 1 \text{ if downstream, } d = 2 \text{ if upstream}$), and nothing else changes:
+
+$$
+Y_{i,t,d} \sim \mathcal{N}(\mu_{i,t,d},\,\sigma^{2})
+\\
+\mu_{i,t,d} = \mu_{i,t-1,d} + \beta_{t-1}\mu_{i,t-1,d} + \eta_{i,t,d}
+$$
+The slope term, $\beta$ is now shared across all sites and stations within a time point. The $\eta$ terms are all drawn from a common normal distribution of mean 0 and standard deviation of $\sigma_{eta}$, and the standard deviation for observations is a single shared term across all samples, representing variation among triplicate biological observations at a creek/time/station. 
+
+Running this model gives us a really good sense of what's going on over time in the creeks, with all missing data points interpolated as parameters:
+
+![Fig 2](pp_check_cutthroat.jpeg)
+
+
+## Effect of Culverts
+
+We could simulate new data, given the parameters in hand, for upstream and downstream of a culvert in any given creek; the difference would be the effect of the culvert. But the $eta$ term gives us a way of estimating the effect of the culverts themselves, after subtracting out the effects of autocorrelation and seasonal variation: we can simply take the difference between upstream and downstream values of $eta$ for a given creek/time, and that should give us the answer. 
+
+
+
