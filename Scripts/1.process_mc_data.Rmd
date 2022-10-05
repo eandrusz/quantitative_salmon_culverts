@@ -1,0 +1,300 @@
+---
+title: "process_mc_data"
+author: "Eily Allan"
+date: "8/24/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rstan)
+library(MCMCpack) #for rdirichelet function
+library(here)
+library(gridExtra)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+source(here("Scripts","functions", "calibrate_metabarcoding.R")) 
+```
+
+## Import data
+
+```{r read files}
+
+#### read in files for rosetta stone run - separate by even and skewed communities 
+mockpath <- here("Input","mockcommunity","newmockdata.RDS")
+mockdata <- readRDS(mockpath)
+
+mockdata <- mockdata %>% 
+  filter(InputType=="Tissue")  %>% 
+  filter(Genus == "Oncorhynchus")
+
+evenmocks <- mockdata %>% 
+  filter(CommType == "Even") %>% 
+  replace(is.na(.), 0)
+skewmocks <- mockdata %>% 
+  filter(CommType == "Skew") %>% 
+  replace(is.na(.), 0)
+
+evenmocktrue <- evenmocks 
+evenmockunk <- evenmocks %>% 
+  rename(time = Community) %>% 
+  rename(station = CommType) %>% 
+  rename(tech = Tech_Rep) %>% 
+  mutate(creek=1, biol=1) %>% 
+  filter(! is.na(Species)) %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  rename(Nreads = nReads) %>% 
+  dplyr::select(c(time, creek, station, biol, tech, species, Nreads))
+
+skewmocktrue <- skewmocks 
+skewmockunk <- skewmocks %>%
+  rename(time = Community) %>% 
+  rename(station = CommType) %>% 
+  rename(tech = Tech_Rep) %>% 
+  mutate(creek=1, biol=1) %>% 
+  filter(! is.na(Species)) %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  rename(Nreads = nReads) %>% 
+  dplyr::select(c(time, creek, station, biol, tech, species, Nreads))
+
+# Prepare for stan model 
+eventrue <- format_metabarcoding_data(skewmockunk, evenmocktrue)
+eventrue_stan <- makeDesign(eventrue, N_pcr_cycles = 43)
+
+skewtrue <- format_metabarcoding_data(evenmockunk, skewmocktrue)
+skewtrue_stan <- makeDesign(skewtrue, N_pcr_cycles = 43)
+```
+
+## Run QM ML model to get proportions of species DNA corrected for amplification bias. 
+
+```{r run QM ML model}
+
+ML_out_eventrue <- QM_likelihood(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), eventrue_stan)
+ML_alpha_eventrue <- ML_out_eventrue$ML_alpha_est %>% 
+  mutate(calibration="eventrue")
+
+ML_out_skewtrue <- QM_likelihood(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), skewtrue_stan)
+ML_alpha_skewtrue <- ML_out_skewtrue$ML_alpha_est %>% 
+  mutate(calibration="skewtrue")
+
+compare_alphas <- rbind(ML_alpha_eventrue, ML_alpha_skewtrue) 
+
+ggplot(compare_alphas, aes(y=species, x=alpha_est, col=calibration)) + 
+  geom_point() +
+  labs(title = "Tissue-Derived Mock Communities")
+
+ML_out_skewtrue$ML_estimates %>%
+  rownames_to_column("sample") %>%
+  pivot_longer(-sample, names_to = "species") %>%
+  separate(col = sample, into = c("time", "creek", "station", "biol"), remove = FALSE) %>% 
+  mutate(station = case_when(station == 1 ~ "Down",
+                                  station == 2 ~ "Up11",
+                                  station == 3 ~ "Up5")) %>% 
+  filter(value > 0.001) %>%
+  ggplot(aes(x = time, fill = species, y = value)) +
+    geom_col() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title="Modeled Even", y="Corrected Proportion of Reads",x="Community")
+
+```
+
+## Run QM Bayesian model
+
+```{r run QM Bayes model} 
+
+bayes_out_eventrue <- QM_bayes(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), eventrue_stan)
+bayes_alpha_eventrue <- bayes_out_eventrue$Bayes_alpha_est
+
+bayes_out_skewtrue <- QM_bayes(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), skewtrue_stan)
+bayes_alpha_skewtrue <- bayes_out_skewtrue$Bayes_alpha_est
+
+
+bayes_out_eventrue$Bayes_estimates %>%
+  rownames_to_column("sample") %>%
+  pivot_longer(-sample, names_to = "species") %>%
+  separate(col = sample, into = c("Comm", "creek", "station", "biol"), remove = FALSE) %>% 
+  filter(value > 0.001) %>%
+  ggplot(aes(x = Comm, fill = species, y = value)) +
+    geom_col() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+```
+
+
+```{r plot actual proportions of input and reads before QM model}
+
+skew_input <- skewmocktrue %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  filter(! str_detect(species, "NA")) %>% 
+  filter(! str_detect(species, "keta")) %>%
+  group_by(Community, Tech_Rep) %>% 
+  mutate(newtot = sum(start_prop)) %>% 
+  mutate(adj_prop = start_prop/newtot) %>% 
+  ggplot(aes(x = Tech_Rep, y = adj_prop, fill = species)) +
+  geom_col() +  
+  #guides(fill = "none") +
+  facet_wrap(~Community) +
+  theme_bw() +
+  labs(x="Technical Replicate", y="Proportion of Input DNA", title="Actual Skew Input")
+
+
+even_input <- evenmocktrue %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  filter(! str_detect(species, "NA")) %>% 
+  filter(! str_detect(species, "keta")) %>%
+  group_by(Community, Tech_Rep) %>% 
+  mutate(newtot = sum(start_prop)) %>% 
+  mutate(adj_prop = start_prop/newtot) %>% 
+  ggplot(aes(x = Tech_Rep, y = adj_prop, fill = species)) +
+  geom_col() +  
+  #guides(fill = "none") +
+  facet_wrap(~Community) +
+  theme_bw() +
+  labs(x="Technical Replicate", y="Proportion of Input DNA", title="Actual Even Input")
+
+skew_reads <- skewmocktrue %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  filter(! str_detect(species, "NA")) %>% 
+  filter(! is.na(nReads)) %>% 
+  group_by(Community, Tech_Rep) %>% 
+  mutate(newtotreads = sum(nReads)) %>% 
+  mutate(adj_prop_reads = nReads/newtotreads) 
+
+skew_reads_plot <- skew_reads %>% 
+  ggplot(aes(x = Tech_Rep, y = adj_prop_reads, fill = species)) +
+  geom_col() +  
+  #guides(fill = "none") +
+  facet_wrap(~Community) +
+  theme_bw() +
+  labs(x="Technical Replicate", y="Proportion of Reads", title="Uncorrected Skew Reads")
+
+even_reads <- evenmocktrue %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  filter(! str_detect(species, "NA")) %>% 
+  filter(! is.na(nReads)) %>% 
+  group_by(Community, Tech_Rep) %>% 
+  mutate(newtotreads = sum(nReads)) %>% 
+  mutate(adj_prop_reads = nReads/newtotreads) 
+
+even_reads_plot <- even_reads %>% 
+  ggplot(aes(x = Tech_Rep, y = adj_prop_reads, fill = species)) +
+  geom_col() +  
+  #guides(fill = "none") +
+  facet_wrap(~Community) +
+  theme_bw() +
+  labs(x="Technical Replicate", y="Proportion of Reads", title="Uncorrected Even Reads")
+
+
+skew_ML_corrected_eventrue <- ML_out_eventrue$ML_estimates %>% 
+  pivot_longer(names_to="species", values_to="ML_est_prop", cols = c("Oncorhynchus clarkii","Oncorhynchus gorbuscha","Oncorhynchus kisutch","Oncorhynchus nerka","Oncorhynchus tshawytscha","Oncorhynchus mykiss")) %>% 
+  mutate(Community = c(rep(1:3, each=6))) %>% 
+  group_by(Community) %>% 
+  mutate(check = sum(ML_est_prop)) %>% 
+  ggplot(aes(x = Community, y = ML_est_prop, fill = species)) +
+  geom_col() +  
+  #guides(fill = "none") +
+  facet_wrap(~Community) +
+  theme_bw() +
+  labs(x="Technical Replicate", y="Proportion of Corrected Reads", title="Corrected Skew Input")
+
+even_ML_corrected_eventrue <- ML_out_skewtrue$ML_estimates %>% 
+  pivot_longer(names_to="species", values_to="ML_est_prop", cols = c("Oncorhynchus clarkii","Oncorhynchus gorbuscha","Oncorhynchus kisutch","Oncorhynchus mykiss", "Oncorhynchus nerka","Oncorhynchus tshawytscha")) %>% 
+  mutate(Community = c(rep(1:3, each=6))) %>% 
+  group_by(Community) %>% 
+  mutate(check = sum(ML_est_prop)) %>% 
+  ggplot(aes(x = Community, y = ML_est_prop, fill = species)) +
+  geom_col() +  
+  #guides(fill = "none") +
+  facet_wrap(~Community) +
+  theme_bw() +
+  labs(x="Technical Replicate", y="Proportion of Corrected Reads", title="Corrected Even Input")
+
+
+grid.arrange(skew_input, skew_reads_plot, skew_ML_corrected_eventrue, nrow=3)
+
+avgreads <- skew_reads %>% 
+  group_by(Community, Tech_Rep, species) %>% 
+  mutate(avgprop = mean(adj_prop_reads)) %>% 
+  dplyr::select(c(Community,species,avgprop)) %>% 
+  ggplot(aes(x=Tech_Rep, y=avgprop, fill=species)) + 
+  geom_col() +
+  facet_grid(~Community)
+```
+
+Old - using 1 to calibrate 2/3 and through all iterations
+
+```{r more calibrating}
+
+mc1 <- mockdata %>% 
+  filter(Community == "MC1") %>% 
+  replace(is.na(.), 0)
+mc23unk <- mockdata %>% 
+  filter(Community !="MC1") %>% 
+  replace(is.na(.), 0) %>% 
+  rename(time = Community) %>% 
+  rename(station = CommType) %>% 
+  rename(tech = Tech_Rep) %>% 
+  mutate(creek=1, biol=1) %>% 
+  filter(! is.na(Species)) %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  rename(Nreads = nReads) %>% 
+  dplyr::select(c(time, creek, station, biol, tech, species, Nreads))
+
+mc1true <- format_metabarcoding_data(mc23unk, mc1)
+mc1true_stan <- makeDesign(mc1true, N_pcr_cycles = 43)
+
+mc2true <- mockdata %>% 
+  filter(Community == "MC2")
+mc13unk <- mockdata %>% 
+  filter(Community !="MC2") %>% 
+  rename(time = Community) %>% 
+  rename(station = CommType) %>% 
+  rename(tech = Tech_Rep) %>% 
+  mutate(creek=1, biol=1) %>% 
+  filter(! is.na(Species)) %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  rename(Nreads = nReads) %>% 
+  dplyr::select(c(time, creek, station, biol, tech, species, Nreads))
+
+mc2true <- format_metabarcoding_data(mc13unk, mc2true)
+mc2true_stan <- makeDesign(mc2true, N_pcr_cycles = 43)
+
+mc3true <- mockdata %>% 
+  filter(Community == "MC3")
+mc12unk <- mockdata %>% 
+  filter(Community !="MC3") %>% 
+  rename(time = Community) %>% 
+  rename(station = CommType) %>% 
+  rename(tech = Tech_Rep) %>% 
+  mutate(creek=1, biol=1) %>% 
+  filter(! is.na(Species)) %>% 
+  unite("species", c(Genus, Species), sep = " ") %>% 
+  rename(Nreads = nReads) %>% 
+  dplyr::select(c(time, creek, station, biol, tech, species, Nreads))
+
+mc3true <- format_metabarcoding_data(mc12unk, mc3true)
+mc3true_stan <- makeDesign(mc3true, N_pcr_cycles = 43)
+
+ML_out_mc1true <- QM_likelihood(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), mc1true_stan)
+ML_alpha_mc1true <- ML_out_mc1true$ML_alpha_est %>% 
+  mutate(calibration="mc1true")
+
+ML_out_mc2true <- QM_likelihood(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), mc2true_stan)
+ML_alpha_mc2true <- ML_out_mc2true$ML_alpha_est %>% 
+  mutate(calibration="mc2true")
+
+ML_out_mc3true <- QM_likelihood(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), mc3true_stan)
+ML_alpha_mc3true <- ML_out_mc3true$ML_alpha_est %>% 
+  mutate(calibration="mc3true")
+
+compare_alphas <- rbind(ML_alpha_eventrue, ML_alpha_skewtrue, ML_alpha_mc1true, ML_alpha_mc2true, ML_alpha_mc3true) 
+
+ggplot(compare_alphas, aes(y=species, x=alpha_est, col=calibration)) + 
+  geom_point() +
+  labs(title = "Tissue-Derived Mock Communities")
+
+
+```

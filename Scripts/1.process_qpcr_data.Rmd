@@ -1,0 +1,143 @@
+---
+title: "process_qpcr_data"
+author: "EA/RPK"
+date: "8/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rstan)
+library(here)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+source(here("Scripts","functions", "calibrate_qPCR.R")) 
+```
+
+Here, we are going to take the Ct values from the qPCR instrument and convert them into copy numbers. We will use the standard curve to do this, accounting for different standard curves for each plate and also that error increases at low copy numbers. 
+
+## Import data
+
+We have many spreadsheets with our results of both standard curves and samples Ct values. We also have a master spreadsheet with dilution information and which samples are the final samples from each plate - we checked for inhibition before running the assay and if a sample was inhibited, we diluted until it was no longer inhibited (using IPC kit). So we will eventually need to multiply by the dilution factor after we move from Ct space to copy/uL space. 
+
+```{r read files}
+
+#### Metadata file is for both cutthroat and coho 
+qPCRmeta <- here("Input","qpcr","qPCR_samples_ALL.xlsx")
+
+#### Cutthroat and coho file directory 
+cut_files <- here("Input","qpcr","Results","CUT")
+coho_files <- here("Input","qpcr","Results","COHO")
+n_cut <- length(list.files(path = cut_files, pattern = "*data", recursive = T, full.names = T))
+n_coho <- length(list.files(path = coho_files, pattern = "*data", recursive = T, full.names = T))
+
+#### Use function to create .csv files -- taking all cutthroat and coho files from instrument and making final file for qPCR model
+
+cutcleandata <- list()
+for (i in 1:n_cut) {
+  plate_num <- i
+  cutcleandata[[i]] <- input_qPCR_data(cut_files, qPCRmeta, plate_num)
+}
+cut_data_for_stan <- do.call(rbind, cutcleandata)  
+
+check <- cut_data_for_stan %>% 
+  separate(Sample, into=c("time","creek","stn","bio")) %>% 
+  unite(creekstnbio, c(creek,stn,bio)) 
+
+check2 <- check %>% 
+  group_by(creekstnbio) %>% 
+  summarize(n=n())
+
+write.csv(cut_data_for_stan, here("Output","qpcr","cut_data_for_stan.csv"), row.names=FALSE)
+
+
+cohocleandata <- list()
+for (i in 1:n_coho) {
+  plate_num <- i
+  cohocleandata[[i]] <- input_qPCR_data(coho_files, qPCRmeta, plate_num)
+}
+coho_data_for_stan <- do.call(rbind, cohocleandata)  
+
+check <- coho_data_for_stan %>% 
+  separate(Sample, into=c("time","creek","stn","bio")) %>% 
+  unite(creekstnbio, c(creek,stn,bio)) 
+
+check2 <- check %>% 
+  group_by(creekstnbio) %>% 
+  summarize(n=n())
+
+write.csv(coho_data_for_stan, here("Output","qpcr","coho_data_for_stan.csv"), row.names=FALSE)
+
+```
+
+## Run qPCR analysis. 
+
+```{r run qPCR model}
+cut_data_for_stan <- read_csv(here("Output","qpcr","cut_data_for_stan.csv"))
+coho_data_for_stan <- read_csv(here("Output","qpcr","coho_data_for_stan.csv"))
+
+
+### RUN MODEL FOR CUTTHROAT 
+cut_qMod_out <- run_qPCR_model(here("Output","qpcr","cut_data_for_stan.csv"),
+                           here("Scripts", "functions", "qPCR_calibration_enchilada.stan"))
+write_rds(cut_qMod_out, here("Output","qpcr","cut_qMod_out.RDS"))
+cut_modeled_conc <- cut_qMod_out$results_qPCR
+write_rds(cut_modeled_conc, here("Output","qpcr","cut_modeled_conc.RDS"))
+
+### RUN MODEL FOR COHO 
+coho_qMod_out <- run_qPCR_model(here("Output","qpcr","coho_data_for_stan.csv"),
+                               here("Scripts", "functions", "qPCR_calibration_enchilada.stan"))
+write_rds(coho_qMod_out, here("Output","qpcr","coho_qMod_out.RDS"))
+coho_modeled_conc <- coho_qMod_out$results_qPCR
+write_rds(coho_modeled_conc, here("Output","qpcr","coho_modeled_conc.RDS"))
+
+```
+
+## Check output to make sure it looks reasonable 
+
+```{r check cutthroat}
+checkcut <- cut_modeled_conc %>% 
+  unite(Sample, c(time,creek,station,biorep), sep =".") %>% 
+  select(-c(Plate, dilution, Adj_Vol)) %>% 
+  left_join(cut_data_for_stan, by = "Sample") %>% 
+  separate(Sample, into=c("time","creek","station","biorep"))
+
+ggplot(checkcut, aes(x=Ct, y=mean_concentration_est, color=Plate)) +
+  geom_point() +
+  scale_y_log10() +
+  scale_color_continuous(type = "viridis") +
+  facet_wrap(~dilution)
+
+
+```
+
+
+## Visualize modeled output (actual concentrations of cutthroat and coho). 
+Map our actual environmental samples on.
+
+```{r plot cutthroat}
+
+cut_modeled_conc %>% 
+  ggplot(aes(x = time, y = log(mean_concentration_est), col = station)) +
+    geom_point() +
+    geom_segment(aes(x = time, xend = time, y = log(ci25_concentration_est), yend = log(ci75_concentration_est))) +
+    facet_grid(rows=vars(creek)) +
+  labs(y= "Log copies/L water", title = "Cutthroat Trout")
+
+```
+
+```{r plot coho}
+
+coho_modeled_conc %>% 
+  ggplot(aes(x = time, y = log(mean_concentration_est), col = station)) +
+    geom_point() +
+    geom_segment(aes(x = time, xend = time, y = log(ci25_concentration_est), yend = log(ci75_concentration_est))) +
+    facet_grid(rows=vars(creek)) +
+  labs(y= "Log copies/L water", title = "Coho Salmon")
+
+```
+
+

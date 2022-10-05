@@ -17,7 +17,7 @@ library(readxl)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-source(here("Scripts", "qm_qpcr_model", "simFunctions.R")) #functions to generate communities and observations of those communities
+source(here("Scripts", "functions", "simFunctions.R")) #functions to generate communities and observations of those communities
 ```
 
 ```{r load qPCR data - old}
@@ -66,7 +66,7 @@ source(here("Scripts", "qm_qpcr_model", "simFunctions.R")) #functions to generat
 ```
 
 ```{r load qPCR data - new}
-qPCRdata <- read.csv(file=here("Output","qpcr","not_inhibited_cutthroat.csv")) 
+qPCRdata <- read.csv(file=here("Output","qpcr","cut_data_for_stan.csv")) 
   
 
 qPCRdata <- qPCRdata %>% 
@@ -258,7 +258,7 @@ qPCR calibration and estimating absolute concentrations from enviro samples usin
 # n_chains <- 3
 # initf2 <- lapply(1:n_chains, function(id) initf1(chain_id = id))
 
-qMod = stan(file = here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan") ,data = stan_qPCR_data,
+qMod = stan(file = here("Scripts", "functions", "qPCR_calibration_enchilada.stan") ,data = stan_qPCR_data,
                      verbose = FALSE, chains = 3, thin = 1,
                      warmup = 500, iter = 2500,
                      control = list(adapt_init_buffer = 175,
@@ -298,7 +298,7 @@ Visualize std curve with CI
 
 #note: this is conditioned on detection -- doesn't have dropouts here.
 
-PLATE = 10
+PLATE = 2
 
 pp_beta0 <- extract(qMod, "beta_std_curve_0")$beta_std_curve_0[,PLATE]
 pp_beta1 <- extract(qMod, "beta_std_curve_1")$beta_std_curve_1[,PLATE]

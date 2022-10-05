@@ -1,0 +1,110 @@
+---
+title: "process_merge_qpcr_qm"
+author: "Eily Allan"
+date: "8/24/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(gridExtra)
+
+```
+
+## Import Data
+
+```{r smash together}
+#calibrate qPCR against standard curve
+qMod_out <- readRDS(here("Output","qpcr","cut_modeled_conc.RDS"))
+
+bayes_out <- readRDS(here("Output","metabarcoding","bayes_out.RDS"))
+
+
+#put together; small example of Padden
+p1 <- qMod_out %>%  
+  dplyr::select(-c(dilution, Adj_Vol)) %>% 
+  mutate(creek = case_when(creek == "4Pad" & station == "Dn" ~ "4Pad11",
+                           creek == "4Pad" & station == "Up11" ~ "4Pad11",
+                           TRUE ~ creek)) %>% 
+  mutate(creek = case_when(creek == "4Pad" & station == "Up5" ~ "4Pad5",
+                           TRUE ~ creek)) %>% 
+  mutate(station = case_when(creek == "4Pad11" & station == "Up11" ~ "Up",
+                             TRUE ~ station)) %>% 
+  mutate(station = case_when(creek == "4Pad5" & station == "Up5" ~ "Up",
+                             TRUE ~ station)) %>% 
+  filter(creek == "4Pad11") 
+  
+p2 <- bayes_out$Bayes_estimates %>% 
+  rownames_to_column("Sample") %>% 
+  separate(Sample, into = c("time", "creek", "station", "biorep")) %>% 
+  mutate(station = case_when(station == 1 ~ "Dn",
+                             station == 2 ~ "Up")) %>% 
+  filter(creek == "4Pad11") 
+
+p3 <- readRDS(here("Output", "metabarcoding", "envirodata.salmonids.for.qm.RDS")) %>% 
+    mutate(creek = case_when(creek == "4Pad" & station == "Dn" ~ "4Pad11",
+                               creek == "4Pad" & station == "Up11" ~ "4Pad11",
+                               TRUE ~ creek)) %>% 
+    mutate(creek = case_when(creek == "4Pad" & station == "Up5" ~ "4Pad5",
+                             TRUE ~ creek)) %>% 
+    mutate(station = case_when(creek == "4Pad11" & station == "Up11" ~ "Up",
+                             TRUE ~ station)) %>% 
+    mutate(station = case_when(creek == "4Pad5" & station == "Up5" ~ "Up",
+                             TRUE ~ station)) %>% 
+  filter(creek == "4Pad11") %>% 
+  filter(species == "Oncorhynchus clarkii") %>% 
+  ungroup() %>% 
+  dplyr::select(-c("Sample", "tech", "species")) %>% 
+  rename(biorep = biol)
+
+# getTotal <- function(ref_sp_conc, ref_sp_proportion){
+#   ref_sp_conc / ref_sp_proportion 
+# }
+```
+
+```{r mean estimates smash together}
+#produce mean estimates for species-specific absolute concentrations
+presmash <- p1 %>% 
+  full_join(p2) %>% 
+  dplyr::select(-starts_with("ci")) %>% 
+  mutate(mean_concentration_est = case_when(is.na(mean_concentration_est) ~ 50,
+                           TRUE ~ mean_concentration_est))
+
+plotqm <-  ggplot(presmash, aes(x=mean_concentration_est, y = `Oncorhynchus clarkii`)) +
+    geom_point() +
+    labs(x="Cutthroat qPCR concentration (copies/L)", y="QM corrected proportion cutthroat reads")
+  
+## try with raw reads instead 
+presmash_raw <- p1 %>% 
+  full_join(p3) %>% 
+  dplyr::select(-starts_with("ci")) %>% 
+  mutate(mean_concentration_est = case_when(is.na(mean_concentration_est) ~ 50,
+                           TRUE ~ mean_concentration_est))
+
+plotraw <- ggplot(presmash_raw, aes(x=mean_concentration_est, y = Nreads )) +
+    geom_point() +
+    labs(x="Cutthroat qPCR concentration (copies/L)", y="Raw cutthroat reads")
+
+
+grid.arrange(plotraw,plotqm, nrow=2)
+
+smash <- presmash %>% 
+  mutate(total_DNA = mean_concentration_est / `Oncorhynchus clarkii`) %>%  #here, treating cutthroat as reference species
+  mutate(across(contains("Oncorhynchus"), ~ .x * total_DNA)) %>% 
+  #drop_na() %>% 
+  pivot_longer(-c("Plate", "time", "creek", "station", "biorep", "mean_concentration_est", "total_DNA"), names_to = "species") %>% 
+  #filter(value > 1e-2) %>% 
+  filter(!species %in% c("Oncorhynchus nerka", "Oncorhynchus keta", "Oncorhynchus gorbuscha")) 
+
+
+  ggplot(smash, aes(x = time, y = log(value), color = station)) +
+    geom_point() +
+    facet_grid(species~., scales = "free_y")
+ 
+```
+
+
+
