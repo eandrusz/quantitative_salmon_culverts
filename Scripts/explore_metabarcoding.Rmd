@@ -30,14 +30,14 @@ We will have three files: the ASV table (sample, hash, number of reads), the ann
 ```{r read in files}
 
 ASV.table <- read_csv(here("Input", "metabarcoding", "combined.MiFish.ASV.table.csv"))
-annotations <- readRDS(here("Input", "metabarcoding","MiFish.all.previous.hashes.annotated.rds"))
-metadata <- read.csv(here("Input", "metabarcoding", "all_mifish_metadata.csv"))
+annotations <- read_csv(here("Input", "metabarcoding","MiFish.all.previous.hashes.annotated.csv"))
+metadata <- read.csv(here("Input", "all_mifish_metadata.csv"))
 
-# remove any samples that were sequenced that are not part of this project
-ASV.table <- ASV.table %>% 
-  filter(Sample_name %in% metadata$Sample_ID)
-
-missing <- setdiff(metadata$Sample_ID, ASV.table$Sample_name)
+# # remove any samples that were sequenced that are not part of this project
+# ASV.table <- ASV.table %>% 
+#   filter(Sample_name %in% metadata$Sample_ID)
+# 
+# missing <- setdiff(metadata$Sample_ID, ASV.table$Sample_name)
 
 ```
 

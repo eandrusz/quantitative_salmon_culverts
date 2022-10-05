@@ -24,8 +24,10 @@ meta_metadata <- read.csv(here("Input","all_mifish_metadata.csv"))
 meta_postpcr1 <- read.csv(here("Input","metabarcoding","post_pcr1_qubit.csv"))
 #meta_postpcr2 <- read.csv(here("Input","metabarcoding","post_pcr2_qubit.csv"))
 meta_reads <- readRDS(here("Output", "metabarcoding", "species.table.RDS"))
-qpcr_meta <- read.csv(here("Input","qpcr","qpcr.dilutions.csv"))
-qpcr_data <- readRDS(here("Output", "qpcr", "qpcr_only_results.RDS"))
+
+#modeled output
+qpcr_cut <- read.csv(here("Output","models","cut_qpcr_model.csv"))
+qpcr_coho <- read.csv(here("Output","models","coho_qpcr_model.csv"))
 
 ```
 
@@ -72,16 +74,6 @@ meta_postpcr1 %>%
 
 ```
 
-```{r cutthroat padden qpcr}
-
-qpcr_data %>%
-  filter(Type != "STANDARD") %>%
-  ggplot(aes(x = station, y = Ct)) +
-  geom_point() +
-  facet_wrap( ~ time ~ creek)
-
-```
-
 ```{r metabarcoding cutthroat padden only}
 
 species.padden.clarkii <- meta_reads %>% 
@@ -101,16 +93,18 @@ ggplot(species.padden.clarkii, aes(x=date, y=tot)) +
 
 ```
 
-```{r cutthroat padden simple qpcr meta}
+```{r cutthroat padden qpcr}
 
 cut.seq <- species.padden.clarkii %>% 
   unite(c(date,creek,site,bio_rep), col = "Sample", remove = T, sep=".") 
 
-cut.qpcr <- qpcr_data %>% 
-  dplyr::select(Sample, mean_corrected) %>% 
-  distinct() 
+qpcr_cut %>%
+  separate(Sample, into = c("time","creek","station","biorep"), remove = F) %>% 
+  ggplot(aes(x = time, y = mean_corrected)) +
+  geom_point() +
+  facet_grid( ~ station ~ creek)
 
-cut.both <- full_join(cut.seq, cut.qpcr) %>% 
+cut.both <- full_join(cut.seq, qpcr_cut) %>% 
   replace_na(list(tot=0, mean_corrected=0))
 
 ggplot(cut.both, aes(y=tot, x=mean_corrected)) +
