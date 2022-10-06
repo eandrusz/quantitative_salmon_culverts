@@ -28,8 +28,9 @@ d <- d %>%
   filter(creek != "4Pad5") %>% 
   filter(creek != "2Brn") %>% 
   filter(species != "Oncorhynchus tshawytscha") %>%  #for now, filter out as rare
-  mutate(#station = as.integer(station),
+  mutate(station_idx = as.integer(station),
          bio = as.integer(bio)) %>% 
+  dplyr::select(-station) %>% 
   #rename(station_idx = station) %>% 
   #filter(creek != "2Brn") %>%  #Barnes has too much missing data for the moment
   # mutate(station_idx = case_when(station == "Dn" ~ 1,
@@ -116,7 +117,7 @@ stan_data <- list(
   unobserved_species_idx = as.array(missing$species_idx)
 )
 
-stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_multispecies3.stan") ,data = stan_data,
+stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_multispecies4.stan") ,data = stan_data,
                verbose = FALSE, chains = 3, thin = 1,
                warmup = 300, iter = 700,
                control = list(adapt_init_buffer = 175,
@@ -131,11 +132,12 @@ stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_multispecies3.st
                #sample_file = "temp/tmp.csv"
 )
 
+
 #plot(stanMod, par = c("mu"))
 plot(stanMod, par = c("sigma_eta", "sigma_dna"))
 #plot(stanMod, par = c("eta"))
 plot(stanMod, par = c("beta_1"))
-#traceplot(stanMod, par = c("sigma_eta", "sigma_dna"))
+traceplot(stanMod, par = c("sigma_eta", "sigma_dna"))
 
 #shinystan::launch_shinystan(stanMod)
 
@@ -158,7 +160,7 @@ resOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
 
 #plot
 resOut %>% 
-  filter(species_idx == 2) %>% 
+  filter(species_idx == 3) %>% 
   ggplot(aes(x = time_idx, y = log(meandnaconc))) +
     geom_point() +
     geom_point(aes(x = time_idx, y = mean_est), color = "red") +
@@ -205,7 +207,6 @@ for (i in 1:nrow(ppOut)){
 
 
 (p2 <- f %>%
-  # filter(creek_idx == focalCreek) %>%
   mutate(logY = log(meandnaconc)) %>%
   right_join(resOut) %>%
   mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
@@ -219,12 +220,13 @@ for (i in 1:nrow(ppOut)){
   mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
                              species_idx == 2 ~ "Oncorhynchus kisutch",
                              species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
-  ggplot(aes(x = month, y = log(meandnaconc))) +
+    filter(species_idx == 3) %>%
+    ggplot(aes(x = month, y = log(meandnaconc))) +
     geom_point() +
     geom_point(aes(x = month, y = mean_est), color = "red", size = 1.5, alpha = .5) +
     geom_segment(aes(x = month, xend = month, y = pp_05, yend = pp_975), color = "red", size = .3, alpha = .5) +
     geom_segment(aes(x = month, xend = month, y = pp_25, yend = pp_75), color = "red", size = .7, alpha = .5) +
-    facet_grid(~creekname ~station ~species) +
+    facet_grid(~creekname ~station) +
     ggtitle("Posterior Predictive Check \n(predicted mean +/- 95 CI)"))
 # #ggsave(p2, filename = here("Figures/pp_check.pdf"))
 # #ggsave(p2, filename = "pp_check_cutthroat.jpeg")
