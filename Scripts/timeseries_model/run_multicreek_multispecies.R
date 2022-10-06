@@ -4,44 +4,60 @@ library(rstan)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-source("/Volumes/GoogleDrive/My Drive/Kelly_Lab/Functions/qPCR_calibration/calibrate_qPCR.R")
+# source("/Volumes/GoogleDrive/My Drive/Kelly_Lab/Functions/qPCR_calibration/calibrate_qPCR.R")
+# 
+# #a <- read.csv("../../Output/qpcr/cut_final.csv")
+# qMod_out <- run_qPCR_model("../../Output/qpcr/cut_final.csv",
+#                           here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan"))
+# qMod_out2 <- run_qPCR_model("../../Output/qpcr/coho_final.csv",
+#                            here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan"))
+# 
 
-#a <- read.csv("../../Output/qpcr/cut_final.csv")
-qMod_out <- run_qPCR_model("../../Output/qpcr/cut_final.csv",
-                          here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan"))
-qMod_out2 <- run_qPCR_model("../../Output/qpcr/coho_final.csv",
-                           here("Scripts", "qm_qpcr_model", "qPCR_calibration_enchilada.stan"))
+# 
+# 
+# res <- qMod_out$results_qPCR %>%
+#   dplyr::select(time, creek, station, mean_concentration_est, biorep) %>% 
+#   mutate(species_idx = 1) %>% 
+#   bind_rows(qMod_out2$results_qPCR %>% dplyr::select(time, creek, station, mean_concentration_est, biorep) %>% 
+#               mutate(species_idx = 2))
 
-
-
-res <- qMod_out$results_qPCR %>%
-  dplyr::select(time, creek, station, mean_concentration_est, biorep) %>% 
-  mutate(species_idx = 1) %>% 
-  bind_rows(qMod_out2$results_qPCR %>% dplyr::select(time, creek, station, mean_concentration_est, biorep) %>% 
-              mutate(species_idx = 2))
-
-d <- res %>% 
-  #filter(station %in% c("Dn")) %>% 
-  filter(time != "0321") %>% 
-  filter(creek == "4Pad") %>% 
-  filter(!station %in% c("Up5")) %>% 
+d <-readRDS("/Volumes/GoogleDrive/My Drive/RPKDesktop/github_repos/quantitative_salmon_culverts/Output/salmonids_abs_abundance_bio_posterior_rpk.RDS")
+  #dplyr::select(-c(propreads, absconc))
+  
+d <- d %>% 
+  filter(creek != "4Pad5") %>% 
+  filter(creek != "2Brn") %>% 
+  filter(species != "Oncorhynchus tshawytscha") %>%  #for now, filter out as rare
+  mutate(#station = as.integer(station),
+         bio = as.integer(bio)) %>% 
+  #rename(station_idx = station) %>% 
   #filter(creek != "2Brn") %>%  #Barnes has too much missing data for the moment
-  mutate(station_idx = case_when(station == "Dn" ~ 1,
-                                 station %in% c("Up", "Up11") ~ 2)) %>% 
-  dplyr::select(-c(station)) %>% 
+  # mutate(station_idx = case_when(station == "Dn" ~ 1,
+  #                                station %in% c("Up", "Up11") ~ 2)) %>% 
+  # dplyr::select(-c(station)) %>% 
  # filter(station_idx == 1) %>% 
   arrange(creek) %>% 
-  mutate(creek_idx = match(creek, unique(creek))) %>% 
   mutate(month = substr(time, 1,2),
          year = substr(time, 3,4)) %>% 
   arrange(year, month) %>% 
-  mutate(time_idx = match(time, unique(time))) %>% 
-  dplyr::select(-c(month, year)) %>% 
-  arrange(time_idx, creek_idx)
+  dplyr::select(-c(month, year))
+
+
+d$creek_idx <- match(d$creek, unique(d$creek))
+d$time_idx <- match(d$time, unique(d$time))
+d$species_idx <- match(d$species, unique(d$species))
+
+  
+d %>% 
+  filter(species_idx == 3) %>% 
+  ggplot(aes(x = time_idx, y = log(meandnaconc))) +
+    geom_point() +
+    facet_grid(creek_idx~station_idx)
 
 # construction <- which(d$creek_idx == 4 & d$time_idx %in% c(8:10))
-f <- d  #use this to filter out anything you don't want to model
-  
+f <- d %>%  #use this to filter out anything you don't want to model
+  arrange(time_idx, creek_idx) %>% 
+  ungroup()
   
 #note unobserved datapoints
 # datamat <- f %>% 
@@ -92,7 +108,7 @@ stan_data <- list(
   creek_idx = f$creek_idx,
   station_idx = f$station_idx,
   species_idx = f$species_idx,
-  y_logeDNA = log(f$mean_concentration_est),
+  y_logeDNA = log(f$meandnaconc),
   N_unobserved = nrow(missing),
   unobserved_time_idx= as.array(missing$time_idx),
   unobserved_creek_idx= as.array(missing$creek_idx),
@@ -100,9 +116,9 @@ stan_data <- list(
   unobserved_species_idx = as.array(missing$species_idx)
 )
 
-stanMod = stan(file = "timeSeries_multispecies.stan" ,data = stan_data,
+stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_multispecies3.stan") ,data = stan_data,
                verbose = FALSE, chains = 3, thin = 1,
-               warmup = 500, iter = 1700,
+               warmup = 300, iter = 700,
                control = list(adapt_init_buffer = 175,
                               max_treedepth=12,
                               stepsize=0.01,
@@ -116,12 +132,14 @@ stanMod = stan(file = "timeSeries_multispecies.stan" ,data = stan_data,
 )
 
 #plot(stanMod, par = c("mu"))
-plot(stanMod, par = c("sigma_eta", "sigma_dna", "beta_1"))
-plot(stanMod, par = c("eta"))
+plot(stanMod, par = c("sigma_eta", "sigma_dna"))
+#plot(stanMod, par = c("eta"))
+plot(stanMod, par = c("beta_1"))
+#traceplot(stanMod, par = c("sigma_eta", "sigma_dna"))
 
 #shinystan::launch_shinystan(stanMod)
 
-#dimensions = c(time, station, creek) 
+#dimensions = c(time, station, species, creek) 
 
 resOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
                       station_idx = 1:length(unique(f$station_idx)),
@@ -133,43 +151,82 @@ resOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
   left_join(f) %>% 
   left_join(data.frame(sigma_dna = summary(stanMod, par = "sigma_dna")$summary[,1], 
                        species_idx = 1:1:length(unique(f$species_idx))))
+
+# resOut %>% 
+#   filter(creek_idx == 1  & species_idx == 2 & time_idx == 8) %>% 
+#   as.data.frame()
+
 #plot
 resOut %>% 
-  filter(species_idx == 1) %>% 
-  ggplot(aes(x = time_idx, y = log(mean_concentration_est))) +
+  filter(species_idx == 2) %>% 
+  ggplot(aes(x = time_idx, y = log(meandnaconc))) +
     geom_point() +
     geom_point(aes(x = time_idx, y = mean_est), color = "red") +
     geom_segment(aes(x = time_idx, xend = time_idx, y = ci25, yend = ci75), color = "red") +
-    facet_grid(station_idx~creek_idx) +
+    facet_grid(~station_idx ~creek_idx) +
     ggtitle("Estimated Mean Concentrations w Interquartile Range")
 
 
 #posterior predictive check:
 #95% CI for mu, sigma; w observed data
+#dimensions = c(time, station, species, creek) 
 
-# (p2 <- f %>% 
-#   # filter(creek_idx == focalCreek) %>%
-#   mutate(logY = log(mean_concentration_est)) %>%
-#   right_join(resOut) %>%
-#   mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
-#          month = as.factor(month)) %>% 
-#   mutate(Sigma_low = mean_est - (summary(stanMod, par = "sigma_dna")$summary[,1]),
-#          TwoSigma_low = mean_est - 2*(summary(stanMod, par = "sigma_dna")$summary[,1]),
-#          Sigma_high = mean_est + (summary(stanMod, par = "sigma_dna")$summary[,1]),
-#          TwoSigma_high = mean_est + 2*(summary(stanMod, par = "sigma_dna")$summary[,1])) %>%
-#   mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>% 
-#   mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
-#                                creek_idx == 2 ~ "Chuckanut",
-#                                creek_idx == 3 ~ "Padden",
-#                                creek_idx == 4 ~ "Squalicum")) %>% 
-#   ggplot(aes(x = month, y = log(mean_concentration_est))) +
-#     geom_point() +
-#     geom_point(aes(x = month, y = mean_est), color = "red", size = 1.5, alpha = .5) +
-#     geom_segment(aes(x = month, xend = month, y = Sigma_low, yend = Sigma_high), color = "red", size = .7, alpha = .5) +
-#     geom_segment(aes(x = month, xend = month, y = TwoSigma_low, yend = TwoSigma_high), color = "red", size = .3, alpha = .5) +
-#     facet_grid(station~creekname) +
-#     ggtitle("Posterior Predictive Check \n(predicted mean +/- 1 and 2SD)"))
-# #ggsave(p2, filename = "pp_check_cutthroat.pdf")
+getPostPred <- function(time_idx, station_idx, species_idx, creek_idx){
+  n = length(unlist(extract(stanMod, par = "mu[1,1,1,1]")))
+  f_mu = paste0("mu[",
+                time_idx,",",
+                station_idx,",",
+                species_idx,",",
+                creek_idx,"]")
+  f_s = paste0("sigma_dna[",species_idx,"]")
+  
+  postsamples <- rnorm(n, 
+        unlist(extract(stanMod, par = f_mu)),
+        unlist(extract(stanMod, par = f_s))
+  ) 
+  
+  return(quantile(postsamples, c(.025, .05, .25, .5, .75, .9, .975)))
+  
+}
+
+ppOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
+                     station_idx = 1:length(unique(f$station_idx)),
+                     species_idx = 1:length(unique(f$species_idx)),
+                     creek_idx = 1:length(unique(f$creek_idx)))
+ppOut[,5:11] <- 0.0
+colnames(ppOut)[5:11] <- paste0("pp_", c("025", "05", 25, 50, 75, 90, 975))
+
+for (i in 1:nrow(ppOut)){
+  ppOut[i,5:11] <- as.list(getPostPred(ppOut$time_idx[i], 
+                               ppOut$station_idx[i], 
+                               ppOut$species_idx[i], 
+                               ppOut$creek_idx[i]))
+}
+
+
+(p2 <- f %>%
+  # filter(creek_idx == focalCreek) %>%
+  mutate(logY = log(meandnaconc)) %>%
+  right_join(resOut) %>%
+  mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
+         month = as.factor(month)) %>% 
+  left_join(ppOut) %>% 
+  mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
+  mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
+                               creek_idx == 2 ~ "Chuckanut",
+                               creek_idx == 3 ~ "Padden",
+                               creek_idx == 4 ~ "Squalicum")) %>%
+  mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
+                             species_idx == 2 ~ "Oncorhynchus kisutch",
+                             species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
+  ggplot(aes(x = month, y = log(meandnaconc))) +
+    geom_point() +
+    geom_point(aes(x = month, y = mean_est), color = "red", size = 1.5, alpha = .5) +
+    geom_segment(aes(x = month, xend = month, y = pp_05, yend = pp_975), color = "red", size = .3, alpha = .5) +
+    geom_segment(aes(x = month, xend = month, y = pp_25, yend = pp_75), color = "red", size = .7, alpha = .5) +
+    facet_grid(~creekname ~station ~species) +
+    ggtitle("Posterior Predictive Check \n(predicted mean +/- 95 CI)"))
+# #ggsave(p2, filename = here("Figures/pp_check.pdf"))
 # #ggsave(p2, filename = "pp_check_cutthroat.jpeg")
 # 
 # 
