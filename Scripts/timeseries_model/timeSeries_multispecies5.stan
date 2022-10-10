@@ -23,7 +23,7 @@ parameters {
   
   vector[Ncreek] mu_0[Nstations, Nspecies]; //starting concentration for eDNA (log scale)
   vector[Ncreek] eta[Ntime-1, Nstations, Nspecies]; //
-  vector[Ntime-1] beta_1[Nspecies]; //slope relating present concentration to past concentration
+  vector[Ntime-1] beta_1; //slope relating present concentration to past concentration
   // vector<lower=0>[Ncreek] sigma_dna; //SD of DNA concentration (log scale) within creek for a given time
   // vector<lower=0>[Ncreek] sigma_eta; //SD of values of eta within creek across time
    vector<lower=0>[Nspecies] sigma_dna; //SD of DNA concentration (log scale)
@@ -55,7 +55,7 @@ transformed parameters {
     
             mu[t,d,j,i] =  //mu at t+1 and creek i...
                 mu[t-1, d, j, i] +  //is mu at t and creek i...
-                beta_1[j, t-1]*mu[t-1, d, j, i] + //plus some increment determined by slope beta_1
+                beta_1[t-1]*mu[t-1, d, j, i] + //plus some increment determined by slope beta_1
                  // phi[i, d]*mu[t-1, d, i] + //plus some increment due to upstream/downstream position
                 eta[t-1, d, j, i]; //plus some additional random increment, which varies by upstream/downstream position and time
             
@@ -88,9 +88,10 @@ for (d in 1:Nstations){
   // }
     //TODO: do per-species, or else tie to mean; lower means should have higher variances
 
-  for (j in 1:Nspecies){
-      beta_1[j,] ~ normal(0, 5);  
-  }
+  // for (j in 1:Nspecies){
+      // beta_1[j,] ~ normal(0, 1);  
+      beta_1 ~ normal(0, 5);  
+  // }
   
   
   // for (d in 1:Nstations){ //probably only 2 stations, upstream and downstream
