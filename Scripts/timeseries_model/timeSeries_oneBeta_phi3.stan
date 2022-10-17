@@ -33,7 +33,7 @@ parameters {
   vector[Ntime-1] phi[Ncreek, Nspecies]; //random effect for upstream vs. downstream within each creek 
   vector[N_unobserved] mu_unobserved; //vector of unobserved samples to be estimated as params
   vector[Nspecies] mu_phi;
-  real<lower=1> sigma_phi;
+  real<lower=0> sigma_phi;
 }
 
 transformed parameters {
