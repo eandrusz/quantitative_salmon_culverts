@@ -16,7 +16,7 @@
               qPCRfiles <- list.files(path = datafilepath, pattern = "*data", recursive = T, full.names = T)
               qPCRmeta <- read_excel(path=metafilepath, sheet = "info_samples")
               qPCRmeta$use <- as.numeric(qPCRmeta$use)
-              adj_vol_filtered <- readRDS(here("Input","adj_vol_filtered.RDS"))
+              adj_vol_filtered <- readRDS(here("Output","qpcr","backpack","adj_vol_filtered.RDS"))
               
               whichmarker <- str_detect(qPCRfiles[1], "CUT")
               marker <- ifelse(whichmarker, "cutt", "coho")
