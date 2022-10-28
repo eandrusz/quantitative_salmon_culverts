@@ -1,0 +1,27 @@
+---
+title: "Methods Supplement"
+author: "NGN Team"
+date: "20221019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+```
+
+## Field Sampling
+
+```{r FIG_volfiltered, fig.cap="\\label{fig:volfiltered} Volume filtered (L) for each sample.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+knitr::include_graphics(here("Output","Figures","volume_filtered_by_sample.png"), auto_pdf = TRUE)
+```
+
+## Laboratory Processing 
+
+```{r FIG_inhibiton, fig.cap="\\label{fig:inhibition} Dilution factor required to remove inhibition.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+knitr::include_graphics(here("Output","Figures","inhibition_dilution_factors.png"), auto_pdf = TRUE)
+```
+
+## Bioinformatics Processing
+
+
