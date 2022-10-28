@@ -24,7 +24,7 @@ source(here("Scripts","functions", "calibrate_metabarcoding.R"))
 ```{r read files}
 
 #### read in files for rosetta stone run - separate by even and skewed communities 
-mockpath <- here("Input","mockcommunity","newmockdata.RDS")
+mockpath <- here("Input","mockcommunity","20221012_newmockdata.RDS")
 mockdata <- readRDS(mockpath)
 
 mockdata <- mockdata %>% 
