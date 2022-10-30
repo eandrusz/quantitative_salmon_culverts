@@ -14,7 +14,7 @@ format_metabarcoding_data <- function(input_metabarcoding_RDS, input_mock_comm_R
            creek = 1,
            biol = 1) %>% 
     rename(Nreads = nReads) %>% 
-    unite(c(Genus, Species), col = "species", sep = " ") %>% 
+    #unite(c(Genus, Species), col = "species", sep = " ") %>% 
     unite(c(Community, CommType), col = "Community", sep = "_") %>% 
     rename(station = Community) %>% 
     replace(is.na(.), 0) %>% 
@@ -333,7 +333,7 @@ QM_bayes <- function(stanmodelname, stan_metabarcoding_data, NCHAINS = 3, WARMUP
     mean_a_est <- data.frame("alpha_est" = mean_a_est, 
                        "species" = stan_metabarcoding_data$sp_list$species)
     
-    unique(meta.samples$sample)
+    #unique(meta.samples$sample)
     
     return(list(
       Bayes_modelfit = stanMod,

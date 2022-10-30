@@ -7,6 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(here)
 ```
 
 ## Abstract
@@ -49,11 +50,15 @@ A clear opportunity for policy-relevant eDNA work is in using its power to surve
 
 ### Sites
 
-Water samples were collected monthly for one year in five creeks in northwest Washington (add map). Sampling in each creek occurred both downstream and upstream of culverts with varying levels of fish passability under roadways of various sizes. Sample design followed a BACI (Before-After-Control-Impact, add citations) design. [Ez to add info here.] Padden Creek was the experimental creek as over the course of the year-long sampling, the previous, impassable culvert was removed and replaced with a new culvert. [RPK: Open question about what to do with two different culverts here; we have to decide if this is experimentally important, or if we can just look at downstream and up5, keeping the experimental design cleaner. EA: I think we should just do one. I think it would have to be either Dn/Up11 or Up11/Up5 - the time frame works for Dn/Up11 so I think that is what is best (despite knowing now that the biggest difference really is with Up5).] Two of the four other creeks had culverts allowing fish passability, and two had culverts blocking fish passage. Fish passability was determined by the Washington Department of Transportation [add info here]. 
+Water samples were collected monthly for one year in five creeks in northwest Washington (add map). Sampling in each creek occurred both downstream and upstream of culverts with varying levels of fish passability under roadways of various sizes. Sample design followed a BACI (Before-After-Control-Impact, add citations) design. [Ez to add info here.] Padden Creek was the experimental creek as over the course of the year-long sampling, the previous, impassable culvert was removed and replaced with a new culvert. [RPK: Open question about what to do with two different culverts here; we have to decide if this is experimentally important, or if we can just look at downstream and up5, keeping the experimental design cleaner. EA: I think we should just do one. I think it would have to be either Dn/Up11 or Up11/Up5 - the time frame works for Dn/Up11 so I think that is what is best (despite knowing now that the biggest difference really is with Up5).] Two of the four other creeks had culverts allowing fish passibility, and two had culverts blocking fish passage. Fish passibility was determined by the Washington Department of Transportation [add info here]. 
 
 *STOCKING IN LAKE PADDEN
 
 For this study, we refer to the upstream and downstream locations in each creek where water sampling was conducted as a “station” (i.e., Padden-Downstream, Portage-Upstream, etc.), and each biological replicate (3 per station) a “sample”. We therefore collected 3 samples at each station, 2 stations per creek, at 5 creeks, for 12 months, for a total of approximately 360 samples.
+
+# ```{r FIG1_map, fig.cap="\\label{fig:map} Figure 1: Map of sampling locations in Bellingham, Washington. Locations of stream gauges are shown for three of the five creeks sampled.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+# knitr::include_graphics(here("Output","Figures","map.png"), auto_pdf = TRUE)
+# ```
 
 ### Water Sampling
 
@@ -65,7 +70,7 @@ All molecular work was performed at the University of Washington. Benchtops were
 
 Filters were removed from their housing with sterile tweezers and were cut in half using sterile razor blades. Half of each filter was archived at -20C. DNA was extracted off the second half of the filter using a Qiashredder column (Qiagen, XX) and the DNEasy Blood and Tissue Kit (Qiagen, XX) with an overnight incubation (Supplemental File X). Extracts were eluted in 100 uL of molecular grade water, quantified via Qubit (Invitrogen, XX) and stored at -20C until PCR amplification within X months of extraction (check longest time waited). 
 
-We used a published fish-specific primer set (MiFish) targeting a ~170 bp hypervariable region of the mitochondrial DNA 12S rRNA gene for PCR amplification [cite MiFish]. Primer sequences were slightly modified from the original publication based on Praebel and Wangensteen [cite]. Primer sequences also included the Nextera overhang sequences to add unique indices after the first PCR amplification. The primers used were as follows: F 5' TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGGCCGGTAAAACTCGTGCCAGC 3', R 5' GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGCATAGTGGGGTATCTAATCCCAGTTTG 3' (italics indicates Nextera overhang). PCR reactions included 10 uL of 5X Platinum ii Buffer, 0.4 uL of Platinum ii Taq, 1.25 uL of 8 mM dNTPS, 1.25 uL of 10 uM F primer, 1.25 uL of 10 uM R primer, 5 uL of template, and 30.85 uL of molecular grade water, for a total reaction volume of 50 uL. Cycling conditions were as follows: 95C for 2 min, 35 cycles of 95C for 30 sec, 60C for 30 sec, 72C for 30 sec, followed by a final extension of 72C for 5 min. Each month of samples was run on a single plate with the addition of a no template control (NTC; molecular grade water in lieu of template) and a positive control (genomic DNA from kangaroo). After PCR ampliciation, PCR products were visualized on a 1-2% gel. If no band was present, extracts were diluted 1:10 until a band was detected. Following PCR and gel visualization, PCR products were size selected and cleaned using MagBind Beads (Omega Biotek, XX) at a sample:beads ratio of 1.2. Bead-cleaned PCR products were eluted in 30 uL of molecular grade water and quantified via Qubit. 
+We used a published fish-specific primer set (MiFish) targeting a ~170 bp hypervariable region of the mitochondrial DNA 12S rRNA gene for PCR amplification [cite MiFish]. Primer sequences were slightly modified from the original publication based on Praebel and Wangensteen [cite]. Primer sequences also included the Nextera overhang sequences to add unique indices after the first PCR amplification. The primers used were as follows: F 5' TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGGCCGGTAAAACTCGTGCCAGC 3', R 5' GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGCATAGTGGGGTATCTAATCCCAGTTTG 3' (italics indicates Nextera overhang). PCR reactions included 10 uL of 5X Platinum ii Buffer, 0.4 uL of Platinum ii Taq, 1.25 uL of 8 mM dNTPS, 1.25 uL of 10 uM F primer, 1.25 uL of 10 uM R primer, 5 uL of template, and 30.85 uL of molecular grade water, for a total reaction volume of 50 uL. Cycling conditions were as follows: 95C for 2 min, 35 cycles of 95C for 30 sec, 60C for 30 sec, 72C for 30 sec, followed by a final extension of 72C for 5 min. Each month of samples was run on a single plate with the addition of a no template control (NTC; molecular grade water in lieu of template) and a positive control (genomic DNA from kangaroo). After PCR amplification, PCR products were visualized on a 1-2% gel. If no band was present, extracts were diluted 1:10 until a band was detected. Following PCR and gel visualization, PCR products were size selected and cleaned using MagBind Beads (Omega Biotek, XX) at a sample:beads ratio of 1.2. Bead-cleaned PCR products were eluted in 30 uL of molecular grade water and quantified via Qubit. 
 
 A second PCR amplification (or indexing PCR) added a unique index to each sample using Nextera indices (Illumina, XX) to allow pooling multiple samples onto the same sequencing run. For the second PCR, 10 ng of the first PCR product was used as tempalte at a final volume of 11.25 uL. For samples with concentrations less than 0.88 ng/uL, 11.25 uL was added despite being less than 10 ng of amplicon. Each sample had a unique mastermix with the primers being the complementary Nextera overhang and the unique index. Sets A and B were used, making sure to never use the same index for more than one sample on one sequencing run. The PCR reaction included the 11.25 uL of template, 12.5 uL of Kapa HiFi MMX (Roche, XX), and 1.25 uL of indexed primer. Cycling conditions were as follows: 95C for 5 min, 8 cycles of 98C for 20 sec, 56C for 30 sec, 72C for 3 min, and a final extension of 72C for 5 min. Indexed PCR products were also size-selected and purified using MagBind Beads (Omega Biotek, XX) at a sample:beads ratio of 0.8. Bead-cleaned PCR products were eluted in 30 uL of molecular grade water and quantified via Qubit. 
 
@@ -74,6 +79,8 @@ Samples were randomized in 3-month blocks and split across 3 sequencing runs, fo
 ### Bioinformatics 
 
 Pipeline description and online availability. N sequences, etc., with table of pipeline steps and surviving N sequences at each of those steps.
+
+After sequencing, bioinformatic analyses were conducted in R [cite R]. Primer sequences were removed using Cutadapt (Version 1.18) [cite cutadapt] before dada2 [cite] trimmed, filtered, merged paired end reads, and generated amplicon sequence variants (ASVs). Taxonomic assignment was conducted via the insect package [cite] using a tree generated by the developers for the MiFish primers that was last updated in November 2018. Only species level assignments from insect were retained and ASVs not annotated or not annotated to species level were then checked against the NCBI nucleotide database using BLAST+ [cite]. Query sequences that matched a single species at >95% identity were retained.  
 
 
 ### Quantitative PCR
@@ -88,11 +95,20 @@ Each plate included a 8-point standard curve created using synthetic DNA (gBlock
 
 All qPCR data was processed in R using Stan. Absolute concentrations from environmental samples were estimated by building a model to incorporate uncertainty from the standard curve for each plate. The Bayesian model estimates the  
 
-### Quantitative Model
+### Quantitative Metabarcoding Model
 
 Calibration with mock community; description of Stan model with reference to Shelton et al. 
 
 Tying proportions to absolute concentrations using qPCR; these absolute concentrations are a derived quantity in the Stan model, and they incorporate uncertainty from the qPCR standard curve. 
+
+
+# ```{r FIG2_conceptualframework, fig.cap="\\label{fig:map} Figure 2: Conceptual framework outlining data and models used for analyses.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+# knitr::include_graphics(here("Output","Figures","conceptual_framework.png"), auto_pdf = TRUE)
+# ```
+
+### Estimating the Effect of Culverts
+
+
 
 ### Estimating the Effect of Culvert Replacement
 
@@ -103,7 +119,65 @@ The result is a null distribution of [deltaSalmonDNA] for each species, in the a
 
 ## Results
 
+### Metabarcoding Results
+Environmental samples and mock communities were sequenced across 12 Illumina MiSeq runs. The total number of reads generated was ~42 million across XX environmental samples (12 months x 11 stations x 3 biological replicates = 396 filters) and 27 mock community samples (3 communities x 9 replicates [6 even, 3 skewed proportions]). After quality filtering and merging all runs, XX reads remained from XX amplicon sequence variants (ASVs), of which XX% of reads and XX% of reads were annotated to species level. 
+
+Importantly, the ASVs assinging to salmonid species in the mock communities were found in environmental samples, providing confidence in the species level assignments and application of the quantitative metabarcoding model to correct for different amplification efficiencies across similar species. 
+
+The most common salmonid species found in the environmental samples was XX (cutthroat trout?), with XX% of samples across times, creeks, and stations having at least 50% of reads assigned to *O. clarkii*.  
+
+### Cutthroat Trout Quantitative PCR Results 
+All environmental samples (n = 356, should be 357, one set of triplicates missing from Sqm Up August, otherwise 3x2x5x12 = 360) were quantified for absolute concentrations of cutthroat trout DNA across 30 plates, resulting in 280 samples with a positive detection in at least 1 of 3 technical replicates. A subset of samples (n = 111, all of Padden Creek and then any samples that were not detected using the cutthrat assay) were quantified for coho salmon across 12 plates, resulting in 56 samples with a positive detection in at least 1 of 3 technical replicates. For all 42 plates, efficiencies ranged from X to X%. 
+
+## NOTE TO SELF - go back and find why 0222_1Prt_Up_2 has two sets of triplicates and 0222_1Prt_Up_1 is missing in cut -- and coho has too many reps for 0222.3Chk.Up.1, 0621.2Brn.Up.2, and 1121.2Brn.Dn.3. 
+
+The majority of environmental samples (65%) were determined to be inhibited. The highest dilution factor to remove inhibition was 1:1000, but the most common dilution factor was 1:10 (75% of inhibited samples).  
+
+The modeled output of cutthroat trout DNA concentrations after converting Ct values to copies/L of water (after accounting for dilution and volume filtered), ranged from 10 copies/L to 1,377,656.67 copies/L, with a mean value of 57,529 copies/L. Coho DNA concentrations ranged from 27 copies/L to 1,214,611 copies/L with a mean value of 46,132 copies/L. 
+
+# ```{r FIG3_qpcr, fig.cap="\\label{fig:qpcr} Figure 3: Absolute concentration (copies/L of water) of cutthroat trout (Panel A) and coho salmon DNA (Panel B) as measured by qPCR.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+# knitr::include_graphics(here("Output","Figures","modeled_cut_qpcr_updown.png"), auto_pdf = TRUE)
+# ```
+
+### Quantitative Metabarcoding 
+
+The intercalibration of the mock community samples demonstrates the rank order of ampliciation efficiencies for salmonids (Supplemental Figure X). Of the seven salmonids included in the mock community, *O. gorbuscha* had the highest amplification efficiency and *O. kisutch* had the lowest amplification efficiency (Supplemental Figure X). 
+
+In the environmental samples, proportions of reads were then corrected to account for these varying amplification efficiencies to obtain the initial proportions of DNA per species prior to PCR amplification (Figure X).  
+
+Using the results from the qPCR assay for *O. clarkii* and the corrected proportions of starting DNA concentrations from the quantitative metabarcoding model, the total concentration of DNA of salmonids can be inferred by dividing the concentration of *O. clarkii* (copies/L) by the proportion of *O. clarkii* in each environmental sample. The total DNA concentration of salmonid DNA in environmental samples ranged from XX to XX copies/L (Supplemental Figure X), with the highest concentrations found in X month and in X creek. 
+
+# ```{r FIG4_metabarcoding, fig.cap="\\label{fig:metabarcoding} Panel A) Compositions of salmonid DNA as determined by metabarcoding after correction for amplification bias. B) Absolute concentrations of salmonid DNA using total DNA derived from cutthroat qPCR results.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+# knitr::include_graphics(here("Output","Figures","metabarcoding_stackbar_absolute.png"), auto_pdf = TRUE)
+# ```
+
+
+### Culvert Effects
+
+
+### Construction Effects 
+
+
 ## Discussion
+
+### Environmental DNA can provide quantitative measurements of environmental impacts
+
+A clear seasonal pattern occurred for all the salmonids detected in the study. The time series model uses shared information across creeks to include the change in eDNA concentrations due to time, whether a sample was collected below or above a barrier (i.e., culvert), and whether or not there was construction occurring. 
+
+In this was, we could isolate the changes in eDNA concentrations as a result of the intervention (i.e., construction) while accounting for the variance due to time and station (i.e., culvert).       
+
+### Not all culverts are barriers 
+By measuring DNA concentrations of species above and below culverts on a small spatial scale, we were able to determine how much of a barrier each culvert was (or was not) to fish passage. We found that four of the five creeks sampled were not actually major barriers to fish passage. The only creek that was determined to be a barrier to fish passage was Barnes Creek, which was also the largest distance between the downstream and upstream station. 
+
+Though eDNA can move downstream with water flow, here, we were measuring if culverts were barriers to fish moving upstream as we were focused on the impact of culverts on migratory salmon. In our case, we were comparing if downstream stations had higher DNA concentrations than upstream stations as a result of fish being unable to get upstream. 
+
+
+
+
+
+### Salmonids can survive a bulldozer in a creek 
+
+The intervention (i.e., construction) in Padden Creek occurred over about two months and included the "de-watering" of the creek, removal of the existing culvert, installation of the new culvert, and then the "re-watering" of the creek. 
 
 ## Conclusion
 
