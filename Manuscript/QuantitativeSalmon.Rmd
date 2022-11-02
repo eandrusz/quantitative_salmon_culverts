@@ -74,7 +74,14 @@ We used a published fish-specific primer set (MiFish) targeting a ~170 bp hyperv
 
 A second PCR amplification (or indexing PCR) added a unique index to each sample using Nextera indices (Illumina, XX) to allow pooling multiple samples onto the same sequencing run. For the second PCR, 10 ng of the first PCR product was used as tempalte at a final volume of 11.25 uL. For samples with concentrations less than 0.88 ng/uL, 11.25 uL was added despite being less than 10 ng of amplicon. Each sample had a unique mastermix with the primers being the complementary Nextera overhang and the unique index. Sets A and B were used, making sure to never use the same index for more than one sample on one sequencing run. The PCR reaction included the 11.25 uL of template, 12.5 uL of Kapa HiFi MMX (Roche, XX), and 1.25 uL of indexed primer. Cycling conditions were as follows: 95C for 5 min, 8 cycles of 98C for 20 sec, 56C for 30 sec, 72C for 3 min, and a final extension of 72C for 5 min. Indexed PCR products were also size-selected and purified using MagBind Beads (Omega Biotek, XX) at a sample:beads ratio of 0.8. Bead-cleaned PCR products were eluted in 30 uL of molecular grade water and quantified via Qubit. 
 
-Samples were randomized in 3-month blocks and split across 3 sequencing runs, for a total of 11 MiSeq runs. Indexed and bead-cleaned products were normalized before pooling. Libraries were quantified via Qubit and also were run on a Bioanalyzer (Agilent, XX) before sequencing. The loading concentration of each library was 4 nM and 5-20% PhiX was included depending on the composition of the run (Supplemental Table X). 
+Samples were randomized in 3-month blocks and each block split across 3 sequencing runs, for a total of 12 MiSeq runs. Indexed and bead-cleaned products were normalized before pooling. Libraries were quantified via Qubit and also were run on a Bioanalyzer (Agilent, XX) before sequencing. The loading concentration of each library was 4 nM and 5-20% PhiX was included depending on the composition of the run (Supplemental Table X). 
+
+The total number of reads generated was ~42 million across XX environmental samples (12 months x 11 stations x 3 biological replicates = 396 filters) and 27 mock community samples (3 communities x 9 replicates [6 even, 3 skewed proportions]) for calibration (see below). After quality-filtering and merging all runs, XX reads remained from XX amplicon sequence variants (ASVs), of which XX% of reads and XX% of reads were annotated to species level. 
+
+Importantly, the particular salmonid ASVs in the mock communities were found in environmental samples, unambiguously linking the taxa in calibration samples with those in environmental samples.
+
+The most common salmonid species found in the environmental samples was XX (cutthroat trout?), with XX% of samples across times, creeks, and stations having at least 50% of reads assigned to *O. clarkii*.
+
 
 ### Bioinformatics 
 
@@ -89,55 +96,79 @@ We used two recently published qPCR primer sets and probes to quantify cutthroat
 
 The O. clarkii assay was multiplexed with TaqMan Exogenous Internal Positive Control Reagents (EXO-IPC) (Applied Biosystems) to check for the presence of PCR inhibitors. Each DNA sample was run in triplicate using Gene Expression Mastermix (XX), a final concentration of 0.375 uM F primer, 0.375 uM R primer, and 0.105 uM probe, as well as 1X EXO-IPC mix, 1X EXO-IPC DNA, 3.5 uL of template for a final reaction volume of 12 uL. The EXO-IPC mix includes the primers and probe for the EXI-IPC DNA, with the probe having a VIC reporter, allowing it to be multiplexed with the O. clarkii assay, which has a FAM reporter. The O. kisutch assay was also run in triplicate using Gene Expression Mastermix (XX), a final concentration of 0.375 uM F primer, 0.375 uM R primer, and 0.105 uM probe, 3.5 uL of template, and molecular grade water for a final reaction volume of 12 uL (without the EXO-IPC kit). For both assays, the thermocycling was as follows: 50C for 2 min, 95C for 10 min, followed by 45 cycles of 95C for 15 sec, 60C for 1 min. 
 
-The cycle threshold (Ct) value determined for the EXO-IPC assay from the NTC was compared to the Ct value for the EXO-IPC assay in each of the enviornmental samples. If the Ct value was >0.5 Ct values from the mean Ct for the NTCs, the sample was deemed inhibited and diluted 1:10 until the Ct value fell within the accepted range. For inhibited samples, the final dilution determined was then used for the O. kisutch assay and after converting Ct values to DNA concentrations using the standard curve, the concentration was multiplied by the dilution factor. 
+The cycle threshold (Ct) value determined for the EXO-IPC assay from the NTC was compared to the Ct value for the EXO-IPC assay in each of the enviornmental samples. If the Ct value was >0.5 Ct values from the mean Ct for the NTCs, the sample was deemed inhibited and diluted 1:10 until the Ct value fell within the accepted range. 
+
+<!-- For inhibited samples, the final dilution determined was then used for the O. kisutch assay and after converting Ct values to DNA concentrations using the standard curve, the concentration was multiplied by the dilution factor.  [Only using O.clarkii in the paper, seemingly, so focus just on that species -- RPK] --> 
 
 Each plate included a 8-point standard curve created using synthetic DNA (gBlocks) at the following concentrations: 100,000 copies/uL, 10,000 copies/uL, 1,000 copies/uL, 100 copies/uL, 10 copies/uL, 5 copies/uL, 3 copies/uL, 1 copy/uL. Additionally, six NTCs were included on each plate: 3 with the IPC DNA mix and 3 with molecular grade water instead of template or IPC DNA mix. All qPCRs were conducted on an Applied Biosystems StepOnePlus thermocycler. Plates were re-run if efficiency as determined by the standard curve was outside of the range of 90-110%. 
 
-All qPCR data was processed in R using Stan. Absolute concentrations from environmental samples were estimated by building a model to incorporate uncertainty from the standard curve for each plate. The Bayesian model estimates the  
+All qPCR data was processed in R using Stan, relating environmental samples to the standard curve via a linear model. We amended the standard linear regression model to more realistically capture the behavior of qPCR observations, accommodating non-detections as a function of underlying DNA concentration, and letting the standard deviation vary with the mean (lower-concentration samples had more uncertainty). See supplement for full statistical details. 
 
-### Quantitative Metabarcoding Model
+### Quantitative Metabarcoding
 
-Calibration with mock community; description of Stan model with reference to Shelton et al. 
+[Calibration with mock community; description of Stan model with reference to Shelton et al.] 
 
-Tying proportions to absolute concentrations using qPCR; these absolute concentrations are a derived quantity in the Stan model, and they incorporate uncertainty from the qPCR standard curve. 
+Calibrated metabarcoding analysis yielded quantitative estimates of the proportions of species' DNA in environmental samples prior to PCR. We then converted these proportions into absolute abundances by expansion, in light of the qPCR results for our reference species *O. clarkii*. We estimated the total amplifiable salmonid DNA in environmental sample $i$ as $DNA_{salmonid_{i}} = \frac{[qPCR_{reference_{i}}]}{Proportion_{reference_{i}}}$, and then expanded species' proportions into absolute concentrations by multiplying these sample-specific total concentrations by individual species' proportions, such that for species $j$ in sample $i$, $DNA_{i,j} = DNA_{salmonid_{i}} * Proportion_{i,j}$.
 
 
 # ```{r FIG2_conceptualframework, fig.cap="\\label{fig:map} Figure 2: Conceptual framework outlining data and models used for analyses.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
 # knitr::include_graphics(here("Output","Figures","conceptual_framework.png"), auto_pdf = TRUE)
 # ```
 
-### Estimating the Effect of Culverts
+
+### Estimating the Effects of Culvert Replacement and of Culverts Themselves
+
+Consistent with the asymmetrical BACI study design, we generated data from our four control creeks as context against which to compare the observations in Padden Creek, our treatment creek. 
+
+Recognizing that these observations are autocorrelated in time, we use an AR(1) autocorrelation model, implemented in Stan via R, to capture the observed trends over time. At time $t$, the expected log-DNA concentration for species $j$ in creek $i$ at station $d$ is a linear function of the DNA concentration for the same species/creek/station at $t-1$ (Equation X). We add an index $r$ to distinguish samples from creeks and time-points that had not undergone culvert replacement (controls; $r = 1$) from those samples in the treatment creek during and post-replacement (treatment; $r = 2$). 
+
+The model term $\gamma$ explicitly captures the effect of culvert replacement at time $t$ for species $j$. We define $\gamma_{r = 1} = 0$, such that the parameter estimates for samples during and after replatement, $\gamma_{r = 2}$, capture the effect of culvert replacement relative to a baseline of zero.
+
+All samples share an observation-variance term, $sigma$, and the model shares information across creeks and time-points via the species-specific slope term $\beta_{j}$, which reflects characteristic degrees of autocorrelation for each species. 
+
+Finally, for a given time/creek/species, the difference in log-DNA concentration between upstream and downstream stations is calculated as the difference between the parameter values of $\eta$ for the two stations. 
+
+We fitted this model in a Bayesian framework using weakly informative priors on all parameters, and confirmed model convergence ($\hat{R} < 1.01$) across 3 chains and 1500 model iterations. See statistical supplement for prior values, diagnostics, and full model details.
 
 
+```{=tex}
+\begin{align*}
+ Y_{i,t,d,j} &\sim \mathcal{N}(\mu_{i,t,d,j},\,\sigma^{2})\\
+\mu_{i,t,d,j} &= \alpha_{i,t,j} + \beta_{j}\mu_{i,t-1,d,j} + \gamma_{t,j,r} + \eta_{i,t,d,j}
+\end{align*}
+```
 
-### Estimating the Effect of Culvert Replacement
-
-Consistent with the asymmetrical BACI study design, we use observations from our four control creeks to develop a null expectation, against which we compare the observations in Padden Creek, our experimental site. Here, we use the difference in DNA concentration upstream vs. downstream of the existing culvert as our outcome variable of interest. We calculate this difference -- treating our biological replicates (within a site) as being drawn from a common distribution, and treating upstream and downstream sites within a creek as independent [ALTHOUGH WE COULD CHANGE THIS] -- independently for each month in each creek.  [WE COULD do this as a time-series, where months within creeks aren't independent, etc... let's discuss.]
-
-The result is a null distribution of [deltaSalmonDNA] for each species, in the absence of construction or other major intervention. This null varies by month, and so accounts for the expected strong seasonal patterns of salmonids. We then assess the effect of the culvert replacement [construction/intervention] in our experimental creek, comparing our observed [deltaSalmonDNA] in Padden to our null for each species in each month. Prior to culvert replacement, we expect no difference between experimental and control creeks; observed differences during and after construction are attributable directly to the construction project. 
 
 
 ## Results
 
 ### Metabarcoding Results
-Environmental samples and mock communities were sequenced across 12 Illumina MiSeq runs. The total number of reads generated was ~42 million across XX environmental samples (12 months x 11 stations x 3 biological replicates = 396 filters) and 27 mock community samples (3 communities x 9 replicates [6 even, 3 skewed proportions]). After quality filtering and merging all runs, XX reads remained from XX amplicon sequence variants (ASVs), of which XX% of reads and XX% of reads were annotated to species level. 
-
-Importantly, the ASVs assinging to salmonid species in the mock communities were found in environmental samples, providing confidence in the species level assignments and application of the quantitative metabarcoding model to correct for different amplification efficiencies across similar species. 
-
-The most common salmonid species found in the environmental samples was XX (cutthroat trout?), with XX% of samples across times, creeks, and stations having at least 50% of reads assigned to *O. clarkii*.  
+ 
 
 ### Cutthroat Trout Quantitative PCR Results 
-All environmental samples (n = 356, should be 357, one set of triplicates missing from Sqm Up August, otherwise 3x2x5x12 = 360) were quantified for absolute concentrations of cutthroat trout DNA across 30 plates, resulting in 280 samples with a positive detection in at least 1 of 3 technical replicates. A subset of samples (n = 111, all of Padden Creek and then any samples that were not detected using the cutthrat assay) were quantified for coho salmon across 12 plates, resulting in 56 samples with a positive detection in at least 1 of 3 technical replicates. For all 42 plates, efficiencies ranged from X to X%. 
+All environmental samples (n = 356, should be 357, one set of triplicates missing from Sqm Up August, otherwise 3x2x5x12 = 360) were quantified for absolute concentrations of cutthroat trout DNA across 30 plates, resulting in 280 samples with a positive detection in at least 1 of 3 technical replicates. 
+<!-- A subset of samples (n = 111, all of Padden Creek and then any samples that were not detected using the cutthroat assay) were quantified for coho salmon across 12 plates, resulting in 56 samples with a positive detection in at least 1 of 3 technical replicates. For all 42 plates, efficiencies ranged from X to X%. -->
 
 ## NOTE TO SELF - go back and find why 0222_1Prt_Up_2 has two sets of triplicates and 0222_1Prt_Up_1 is missing in cut -- and coho has too many reps for 0222.3Chk.Up.1, 0621.2Brn.Up.2, and 1121.2Brn.Dn.3. 
 
-The majority of environmental samples (65%) were determined to be inhibited. The highest dilution factor to remove inhibition was 1:1000, but the most common dilution factor was 1:10 (75% of inhibited samples).  
+The majority of environmental samples (65%) were inhibited and accordingly diluted for analysis. In 75% of inhibited samples, a 1:10 dilution remedied the inhibition, but some samples required dilution by a factor of up to 1000. Subsequent analysis corrected for sample-specific dilution -- and similarly, any variation in water-volume filtered during sample collection -- using an offset in the model linking observed Ct values to copies/L via a standard curve. The modeled output of cutthroat trout DNA concentrations, ranged from 10 copies/L to 1,377,656.67 copies/L, with a mean value of 57,529 copies/L. 
 
-The modeled output of cutthroat trout DNA concentrations after converting Ct values to copies/L of water (after accounting for dilution and volume filtered), ranged from 10 copies/L to 1,377,656.67 copies/L, with a mean value of 57,529 copies/L. Coho DNA concentrations ranged from 27 copies/L to 1,214,611 copies/L with a mean value of 46,132 copies/L. 
+<!-- Coho DNA concentrations ranged from 27 copies/L to 1,214,611 copies/L with a mean value of 46,132 copies/L.  -->
 
 # ```{r FIG3_qpcr, fig.cap="\\label{fig:qpcr} Figure 3: Absolute concentration (copies/L of water) of cutthroat trout (Panel A) and coho salmon DNA (Panel B) as measured by qPCR.", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
 # knitr::include_graphics(here("Output","Figures","modeled_cut_qpcr_updown.png"), auto_pdf = TRUE)
 # ```
+
+The time-series model recovered changes in abundances for each species in each creek across months of the year (Fig X). 
+
+
+
+![FIGX_TimeSeries: O. clarkii; grey dots are posterior means derived by expanding the calibrated metabarcoding proportions using the O. clarkii qPCR results; red dots are posterior means for the time-series model of the same. 75% and 95% posterior CI plotted for each month.](../Output/Figures/Oclarkii_timeseries.png)  
+
+Other species show similar patterns (see supplement). 
+
+
+
 
 ### Quantitative Metabarcoding 
 
@@ -151,11 +182,26 @@ Using the results from the qPCR assay for *O. clarkii* and the corrected proport
 # knitr::include_graphics(here("Output","Figures","metabarcoding_stackbar_absolute.png"), auto_pdf = TRUE)
 # ```
 
+<!-- ![FIG5_CulvertEffect](../Output/Figures/metabarcoding_stackbar_absolute.png) -->
+
 
 ### Culvert Effects
 
+The culverts themselves had only a minor effect on the species surveyed. Summarizing over all species, all creeks, the effect was only significant during the dry periods of summer (July, August, and September), when flows were at a minimum and the connectivity between upstream and downstream was low. Salmonid species were higher upstream than downstream during this period, with mean upstream DNA about 6% higher concentration than downstream DNA. 
+
+![FIG5_CulvertEffect](../Output/Figures/culvert_effect.png)
+
+Individual species' patterns were similar (see supplement).
 
 ### Construction Effects 
+
+# ```{r FIG6_ConstructionEffect, fig.cap="\\label{fig:construction}", fig.path=here("Output","Figures"), echo=F, message=F, warning=F, include = T, fig.height=4, dpi = 300}
+# knitr::include_graphics(here("Output","Figures","Construction_effect.png"), auto_pdf = TRUE)
+# ```
+
+![FIG6_ConstructionEffect](../Output/Figures/Construction_effect.png)
+
+The effects of the culvert-removal operation appear to have been transient and fairly minor for the three salmonid species surveyed. After the beginning of construction in September, we observed a ca. 20-25% reduction in salmonid DNA in the treatment creek attributable to the intervention itself (i.e., after accounting for autocorrelation and seasonal effects) in October (figure X). Upon re-watering in November, the construction effect had disappeared; it remained small to negligble for the remaining sampling months. 
 
 
 ## Discussion
