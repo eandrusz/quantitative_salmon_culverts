@@ -128,7 +128,7 @@ summary(stanMod)$summary[,"Rhat"] %>% sort() %>% tail()
 # Save, if desired
 # saveRDS(list(stan_data,
 #              stanMod,
-#              f), file = here("Scripts/timeseries_model/modelFit_20221101.RDS"))
+#              f), file = here("Scripts/timeseries_model/modelFit_20221102.RDS"))
 
 
 

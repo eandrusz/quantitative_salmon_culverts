@@ -77,6 +77,7 @@ stan_data <- list(
   station_idx = f$station_idx,
   species_idx = f$species_idx,
   construction_idx = f$construction_idx,
+  # construction_indicator = f$construction_idx-1,
   y_logeDNA = log(f$meandnaconc),
   N_unobserved = nrow(missing),
   unobserved_time_idx= as.array(missing$time_idx),
@@ -87,9 +88,9 @@ stan_data <- list(
 
 #######RUN Stan Model#######
 
-stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_20221028.stan") ,data = stan_data,
+stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_20221029.stan") ,data = stan_data,
                        verbose = FALSE, chains = 3, thin = 1,
-                       warmup = 500, iter = 1500,
+                       warmup = 200, iter = 500,
                        control = list(adapt_init_buffer = 175,
                                       max_treedepth=12,
                                       stepsize=0.01,
@@ -128,7 +129,7 @@ summary(stanMod)$summary[,"Rhat"] %>% sort() %>% tail()
 # Save, if desired
 saveRDS(list(stan_data,
              stanMod,
-             f), file = "modelFit_20221028.RDS")
+             f), file = "modelFit_20221029.RDS")
 
 
 

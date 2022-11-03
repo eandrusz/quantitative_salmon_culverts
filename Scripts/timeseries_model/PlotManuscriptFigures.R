@@ -3,7 +3,7 @@ library(here)
 
 ####
 #read in time series model fit
-stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221101.RDS"))
+stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221102.RDS"))
 
 f <- stanMod[3][[1]]  #data in
 s <- stanMod[[2]] #fitted model itself

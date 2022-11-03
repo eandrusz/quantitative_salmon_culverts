@@ -269,8 +269,8 @@ qMod = stan(file = here("Scripts", "functions", "qPCR_calibration_enchilada.stan
                      #init = initf2,
                      #pars = stan_pars,
                      refresh = 10,
-                     boost_lib = NULL,
-                     sample_file = "temp/tmp.csv"
+                     boost_lib = NULL
+                     # sample_file = "temp/tmp.csv"
       )
 
 #plot(qMod, par = c("beta_std_curve_1"))
@@ -317,12 +317,14 @@ for(i in 1:length(pp_beta0)){y[i] <- rnorm(1, mean = mu[i], sd = sigma[i])}
 (plotstd <- data.frame(y, conc) %>% 
   ggplot(aes(x = conc, y = y)) +
     geom_point(alpha = .1) +
-    ggtitle(paste("Plate ", PLATE)))
+    xlab("Log10 DNA Concentration") +
+    ylab("Ct value"))
+    #ggtitle(paste("Plate ", PLATE)))
 
 (p1 <- plotstd +
     geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 1), aes(x = log10(conc), y = Ct), color = "red"))
     #geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 0), aes(x = log10(conc), y = 20), color = "blue") +
-    
+ggsave(p1, file = here("Output/Figures/qPCR_calibration_supplemental.png"))    
 
 
 

@@ -2,7 +2,7 @@ library(tidyverse)
 library(here)
 
 ####
-stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221028.RDS"))
+stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221029.RDS"))
 
 f <- stanMod[3][[1]]  #data in
 s <- stanMod[[2]] #fitted model itself
@@ -105,41 +105,37 @@ p4
 p5
 p6
 
-f %>% 
-  filter(species == "Oncorhynchus tshawytscha") %>% 
-  filter(creek == "3Chk") %>% 
-  as.data.frame()
 
 ##One way to plot effect of culverts:
-f %>%
-  mutate(logY = log(meandnaconc)) %>%
-  right_join(resOut) %>%
-  mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
-         month = as.factor(month)) %>% 
-  left_join(ppOut) %>% 
-  mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
-  mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
-                               creek_idx == 2 ~ "Chuckanut",
-                               creek_idx == 3 ~ "Padden",
-                               creek_idx == 4 ~ "Squalicum")) %>%
-  mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
-                             species_idx == 2 ~ "Oncorhynchus kisutch",
-                             species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
-  filter(species_idx == 1) %>%
-  ggplot(aes(x = as.numeric(month), y = log(meandnaconc))) +
-  # geom_point() +
-  geom_point(aes(x = as.numeric(month), y = mean_est, color = station), size = 1.5, alpha = .5) +
-  geom_smooth(aes(x = as.numeric(month), y = mean_est, color = station), size = 1.5, alpha = .5, se = F) +
-  #geom_segment(aes(x = as.numeric(month), xend = as.numeric(month), y = pp_05, yend = pp_975, color = station),  size = .3, alpha = .5) +
-  geom_segment(aes(x = as.numeric(month), xend = as.numeric(month), y = pp_25, yend = pp_75, color = station),  size = .3, alpha = .5) +
-  facet_grid(~creekname ) +
-  ggtitle("Posterior Predictive Check \n(predicted mean +/- 95 CI)")
+# f %>%
+#   mutate(logY = log(meandnaconc)) %>%
+#   right_join(resOut) %>%
+#   mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
+#          month = as.factor(month)) %>% 
+#   left_join(ppOut) %>% 
+#   mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
+#   mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
+#                                creek_idx == 2 ~ "Chuckanut",
+#                                creek_idx == 3 ~ "Padden",
+#                                creek_idx == 4 ~ "Squalicum")) %>%
+#   mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
+#                              species_idx == 2 ~ "Oncorhynchus kisutch",
+#                              species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
+#   filter(species_idx == 1) %>%
+#   ggplot(aes(x = as.numeric(month), y = log(meandnaconc))) +
+#   # geom_point() +
+#   geom_point(aes(x = as.numeric(month), y = mean_est, color = station), size = 1.5, alpha = .5) +
+#   geom_smooth(aes(x = as.numeric(month), y = mean_est, color = station), size = 1.5, alpha = .5, se = F) +
+#   #geom_segment(aes(x = as.numeric(month), xend = as.numeric(month), y = pp_05, yend = pp_975, color = station),  size = .3, alpha = .5) +
+#   geom_segment(aes(x = as.numeric(month), xend = as.numeric(month), y = pp_25, yend = pp_75, color = station),  size = .3, alpha = .5) +
+#   facet_grid(~creekname ) +
+#   ggtitle("Posterior Predictive Check \n(predicted mean +/- 95 CI)")
 
 
 
 
 
-gamma_means <- expand_grid(time_idx = 2:(length(unique(f$time_idx))),
+gamma_means <- expand_grid(time_idx = 2:(length(unique(f$time_idx))), #gamma, alpha, and eta each have 11 timepoints, which are indexed as 1:11, but which belong to time_idx == 2:12; make that adjustment here.
                            species_idx = 1:length(unique(f$species_idx)),
                            #creek_idx = 1:length(unique(f$creek)),
                            #station_idx = 1:length(unique(f$station_idx)),
@@ -160,7 +156,7 @@ for (i in 1:nrow(gamma_means)){
   gamma_means$gamma_mean[i] <- rstan::summary(s, par = a)$summary[,1]
   gamma_means$gamma_025[i] <- rstan::summary(s, par = a)$summary[,4]
   gamma_means$gamma_975[i] <- rstan::summary(s, par = a)$summary[,8]
-}
+} 
 
 # gamma_means %>% 
 #   mutate(month = time_idx) %>% 
@@ -179,7 +175,7 @@ gamma_means <- f %>% select(time, time_idx) %>%
 
 
 gamma_means %>% 
-  filter(construction_idx == 2, species_idx < 6 & month %in% c(1:12)) %>% 
+  filter(construction_idx == 2, species_idx < 4 & month %in% c(1:12)) %>% 
   ggplot(aes(x = as.factor(month), y = gamma_mean)) +
     geom_point() +
     geom_segment(aes(x = as.factor(month), xend = as.factor(month), y = gamma_025, yend = gamma_975)) +

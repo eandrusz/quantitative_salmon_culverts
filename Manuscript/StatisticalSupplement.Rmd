@@ -29,6 +29,35 @@ See Shelton et al. 2022; McLaren et al; Silverman et al
 
 See Shelton et al. 2019; McCall et al. 2014 (<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4133581/>)
 
+For all samples $i$, on qPCR plates $j$, we either observe ($z_{i,j} = 0$ or do not observe $z_{i,j} = 1$) amplification; we omit the subscripts $i$ and $j$ from the following description except where necessary for clarity. We assume an intercept of zero.
+
+We model the probability of detection $P(z = 1)$) as a linear function of concentration and slope parameter $\phi$, ($P(z = 1) = \theta = c\phi$), with a logit transform to constrain the inferred probability to between 0 and 1.
+
+For those samples that amplify, we observe a Ct value ($y$) is a linear function of our parameter of interest, the log-concentration of target-species DNA under analysis ($c$). We treat $y$ as drawn from a normal distribution $y \sim N(\mu_{i,j}, \sigma_{i,j})$), where each triplicate sample on each qPCR plate has its own estimated mean and standard deviation. The means are estimated as a straightforward linear model, $mu = \beta_{0,j} + \beta_{1,j}c$, but we allow the standard deviation to vary as a linear function of log-concentration so as to accurately reflect decreasing precision with decreasing concentration: $\sigma = e^{\gamma_{0} + \gamma_{1,j}c}$; we estimate these parameters as an exponent to constrain $\sigma > 0$.
+
+Samples with known concentrations (i.e., standards) were fit jointly with unknown samples (i.e., environmental samples); because qPCR plate identity was shared among all environmental samples and standards within a plate, this has the effect of applying plate-specific slope and intercept values for the standard curve to each of the environmental samples on the plate.
+
+Taken together with moderately informative priors, the model is:
+
+```{=tex}
+\begin{flalign*}
+z_{i,j} \sim bernoulli(\theta_{i,j}) \\
+\theta_{i,j} = logit^{-1}(\phi*c_{i,j}) \\[4mm]
+y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{  if } z_{i,j} == 1 \\
+\mu_{i,j} = \beta_{0,j} + \beta_{1,j} * c_{i,j} \\
+\sigma_{i,j} = e^{\gamma_{0}  + \gamma_{1,j}*c_{i,j}} \\
+\beta_{0} \sim normal(39, 3) \\[4mm]
+\beta_{1} \sim normal(-3, 1) \\
+\gamma_{1} \sim normal(0,5) \\
+\gamma_{0} \sim normal(-2,1) \\
+\end{flalign*}
+```
+![FIGSX_qPCR_calibration: Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/Figures/qPCR_calibration_supplemental.png)
+
+Model Diagnostics
+
+3 chains, 1500 iterations, $\hat{R} \leq 1.04$
+
 ## Expanding Proportions into Absolute Abundances
 
 See Pont et al. 2022; McClaren 2022 pre-print

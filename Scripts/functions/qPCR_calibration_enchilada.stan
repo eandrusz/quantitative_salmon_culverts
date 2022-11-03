@@ -39,15 +39,15 @@ parameters {
   real phi_1;
   // real phi_0;
   // real phi_1;
-  real beta_std_curve_0_hyperMean;
-  real beta_std_curve_1_hyperMean;
-  real<lower=0> hyperSigma_0;
-  real<lower=0> hyperSigma_1;
+  // real beta_std_curve_0_hyperMean;
+  // real beta_std_curve_1_hyperMean;
+  // real<lower=0> hyperSigma_0;
+  // real<lower=0> hyperSigma_1;
   
   // real<upper=0> gamma_0_hyperMean;
-  real gamma_1_hyperMean;
+  // real gamma_1_hyperMean;
   // real<lower=0> gamma_hyperSigma_0;
-  real gamma_hyperSigma_1;
+  // real gamma_hyperSigma_1;
 
   // real phi_1_hyperMean;
   // real phi_hyperSigma_1;
@@ -84,7 +84,8 @@ transformed parameters{
 
 model {
    for(i in 1:Nobs){
-      z[i]   ~ bernoulli( inv_logit(theta[plateSample_idx[i]]) ) ;
+     z[i]   ~ bernoulli(theta[plateSample_idx[i]]);
+      // z[i]   ~ bernoulli( inv_logit(theta[plateSample_idx[i]]) ) ;
     }
     
     for(i in 1:Nobs){
@@ -94,20 +95,20 @@ model {
     }
 
   //beta params hierarchical
-  beta_std_curve_0_hyperMean ~ normal(stdCurvePrior_intercept[1], stdCurvePrior_intercept[2]);
-  beta_std_curve_1_hyperMean ~ normal(stdCurvePrior_slope[1], stdCurvePrior_slope[2]);
-  hyperSigma_0 ~ gamma(.5,.5);
-  hyperSigma_1 ~ gamma(1,1);
-  beta_std_curve_0 ~ normal(beta_std_curve_0_hyperMean, hyperSigma_0);
-  beta_std_curve_1 ~ normal(beta_std_curve_1_hyperMean, hyperSigma_1);
+  // beta_std_curve_0_hyperMean ~ normal(stdCurvePrior_intercept[1], stdCurvePrior_intercept[2]);
+  // beta_std_curve_1_hyperMean ~ normal(stdCurvePrior_slope[1], stdCurvePrior_slope[2]);
+  // hyperSigma_0 ~ gamma(.5,.5);
+  // hyperSigma_1 ~ gamma(1,1);
+  beta_std_curve_0 ~ normal(stdCurvePrior_intercept[1], stdCurvePrior_intercept[2]);
+  beta_std_curve_1 ~ normal(stdCurvePrior_slope[1], stdCurvePrior_slope[2]);
   
   //gamma params hierarchical
   // gamma_0_hyperMean ~ normal(-5,1);
-  gamma_1_hyperMean ~ normal(0,3);
+  // gamma_1_hyperMean ~ normal(0,3);
   // gamma_hyperSigma_0 ~ gamma(1,1);
-  gamma_hyperSigma_1 ~ gamma(1,1);
+  // gamma_hyperSigma_1 ~ gamma(1,1);
   // gamma_0 ~ normal(gamma_0_hyperMean,gamma_hyperSigma_0);
-  gamma_1 ~ normal(gamma_1_hyperMean,gamma_hyperSigma_1);
+  gamma_1 ~ normal(0,5);
 
   gamma_0 ~ normal(-2,1);
   // gamma_1 ~ normal(0,1);

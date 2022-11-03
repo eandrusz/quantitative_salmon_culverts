@@ -59,7 +59,7 @@ check2 <- check %>%
   group_by(creekstnbio) %>% 
   summarize(n=n())
 
-write.csv(cut_data_for_stan, here("Output","qpcr","cut_data_for_stan.csv"), row.names=FALSE)
+# write.csv(cut_data_for_stan, here("Output","qpcr","cut_data_for_stan.csv"), row.names=FALSE)
 
 
 ## coho
@@ -78,7 +78,7 @@ check2 <- check %>%
   group_by(creekstnbio) %>% 
   summarize(n=n())
 
-write.csv(coho_data_for_stan, here("Output","qpcr","coho_data_for_stan.csv"), row.names=FALSE)
+# write.csv(coho_data_for_stan, here("Output","qpcr","coho_data_for_stan.csv"), row.names=FALSE)
 
 
 ####################################################################
@@ -92,7 +92,7 @@ write.csv(coho_data_for_stan, here("Output","qpcr","coho_data_for_stan.csv"), ro
 ### RUN MODEL FOR CUTTHROAT 
 cut_qMod_out <- run_qPCR_model(here("Output","qpcr","cut_data_for_stan.csv"),
                                here("Scripts", "functions", "qPCR_calibration_enchilada.stan"))
-write_rds(cut_qMod_out, "/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
+#write_rds(cut_qMod_out, "/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
 cut_modeled_conc <- cut_qMod_out$results_qPCR
 write_rds(cut_modeled_conc, here("Output","qpcr","cut_modeled_conc.RDS"))
 
