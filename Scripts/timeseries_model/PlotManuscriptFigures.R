@@ -73,32 +73,83 @@ resOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
                                            ppOut$creek_idx[i]))
     }
 
+    
+    #Make combined-species plot of trends over time
+    
+    (multispeciesTrends <- f %>%
+      mutate(logY = log(meandnaconc)) %>%
+      right_join(resOut) %>%
+      mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
+             # month = as.factor(month)
+      ) %>% 
+      left_join(ppOut) %>% 
+      drop_na() %>% 
+      mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
+      # mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
+      #                              creek_idx == 2 ~ "Chuckanut",
+      #                              creek_idx == 3 ~ "Padden",
+      #                              creek_idx == 4 ~ "Squalicum")) %>%
+      # mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
+      # species_idx == 2 ~ "Oncorhynchus kisutch",
+      # species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
+      ungroup() %>% 
+      # filter(species_idx == i) %>%
+      ggplot(aes(x = month, y = log(meandnaconc), color = station)) +
+      geom_point(alpha = .2) +
+      geom_point(aes(x = month, y = mean_est, color = station), size = 1.5, alpha = .5) +
+      geom_smooth(aes(x = month, y = mean_est, color = station), se = F, size = 1, alpha = .5, span = .2) +
+      geom_segment(aes(x = month, xend = month, y = pp_025, yend = pp_975, color = station), size = .3, alpha = .2) +
+      geom_segment(aes(x = month, xend = month, y = pp_25, yend = pp_75, color = station), size = .7, alpha = .4) +
+      facet_grid(species~creek) +
+      xlab("Month") + ylab("Log DNA Concentration (copies/L)") +
+        labs(color='') +
+      # ggtitle(paste0(unique(f$species)[i], "\n(predicted mean +/- 95 CI)")) +
+      theme_bw() +
+      theme(panel.grid.minor = element_blank(),
+            panel.grid.major.x = element_blank(),
+            legend.position = "bottom",
+            legend.box.spacing = unit(0, "mm")) +
+      scale_x_continuous(breaks = 1:12,
+                         labels = as.character(1:12)))
+    
+    
+    
+    
     #make species-specific plots and save as ggplot objects
     for (i in 1:length(unique(f$species))){
       assign(paste0("p",i), value = 
-        f %>%
-           mutate(logY = log(meandnaconc)) %>%
-           right_join(resOut) %>%
-           mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
-                  month = as.factor(month)) %>% 
-           left_join(ppOut) %>% 
-           mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
-           mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
-                                        creek_idx == 2 ~ "Chuckanut",
-                                        creek_idx == 3 ~ "Padden",
-                                        creek_idx == 4 ~ "Squalicum")) %>%
-           # mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
-                                      # species_idx == 2 ~ "Oncorhynchus kisutch",
-                                      # species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
-           filter(species_idx == i) %>%
-           ggplot(aes(x = month, y = log(meandnaconc))) +
-           geom_point(color = "darkgrey") +
-           geom_point(aes(x = month, y = mean_est), color = "red", size = 1.5, alpha = .5) +
-           geom_segment(aes(x = month, xend = month, y = pp_025, yend = pp_975), color = "red", size = .3, alpha = .2) +
-           geom_segment(aes(x = month, xend = month, y = pp_25, yend = pp_75), color = "red", size = .7, alpha = .4) +
-           facet_grid(~creekname ~station) +
-           xlab("Month") + ylab("Log DNA Concentration (copies/L)") +
-           ggtitle(paste0(unique(f$species)[i], "\n(predicted mean +/- 95 CI)"))
+               f %>%
+               mutate(logY = log(meandnaconc)) %>%
+               right_join(resOut) %>%
+               mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
+                      # month = as.factor(month)
+               ) %>% 
+               left_join(ppOut) %>% 
+               mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
+               mutate(creekname = case_when(creek_idx == 1 ~ "Portage",
+                                            creek_idx == 2 ~ "Chuckanut",
+                                            creek_idx == 3 ~ "Padden",
+                                            creek_idx == 4 ~ "Squalicum")) %>%
+               # mutate(species = case_when(species_idx == 1 ~ "Oncorhynchus clarkii",
+               # species_idx == 2 ~ "Oncorhynchus kisutch",
+               # species_idx == 3 ~ "Oncorhynchus mykiss")) %>%  ##to fix NAs in unobserved samples
+               ungroup() %>% 
+               filter(species_idx == i) %>%
+               ggplot(aes(x = month, y = log(meandnaconc), color = station)) +
+               geom_point(alpha = .2) +
+               geom_point(aes(x = month, y = mean_est, color = station), size = 1.5, alpha = .5) +
+               geom_smooth(aes(x = month, y = mean_est, color = station), se = F, size = 1, alpha = .5, span = .2) +
+               geom_segment(aes(x = month, xend = month, y = pp_025, yend = pp_975, color = station), size = .3, alpha = .2) +
+               geom_segment(aes(x = month, xend = month, y = pp_25, yend = pp_75, color = station), size = .7, alpha = .4) +
+               facet_grid(~creekname) +
+               xlab("Month") + ylab("Log DNA Concentration (copies/L)") +
+               ggtitle(paste0(unique(f$species)[i], "\n(predicted mean +/- 95 CI)")) +
+               theme_bw() +
+               theme(panel.grid.minor = element_blank(),
+                     panel.grid.major.x = element_blank()) +
+               scale_x_continuous(breaks = 1:12,
+                                  labels = as.character(1:12))
+             
       )
     }
 #visualize
@@ -109,7 +160,9 @@ p3
 # p5
 # p6
 
-# ggsave(p1, file = here("Output/Figures/Oclarkii_timeseries.png"))
+ggsave(p1, file = here("Output/Figures/Oclarkii_timeseries.png"))
+ggsave(p2, file = here("Output/Figures/Okisutch_timeseries.png"))
+ggsave(p3, file = here("Output/Figures/Omykiss_timeseries.png"))
 
 ## Calculate and plot the effect of culvert-removal construction (Padden Creek)
 

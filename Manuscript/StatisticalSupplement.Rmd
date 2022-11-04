@@ -33,32 +33,36 @@ For all samples $i$, on qPCR plates $j$, we either observe ($z_{i,j} = 0$ or do 
 
 We model the probability of detection $P(z = 1)$) as a linear function of concentration and slope parameter $\phi$, ($P(z = 1) = \theta = c\phi$), with a logit transform to constrain the inferred probability to between 0 and 1.
 
-For those samples that amplify, we observe a Ct value ($y$) is a linear function of our parameter of interest, the log-concentration of target-species DNA under analysis ($c$). We treat $y$ as drawn from a normal distribution $y \sim N(\mu_{i,j}, \sigma_{i,j})$), where each triplicate sample on each qPCR plate has its own estimated mean and standard deviation. The means are estimated as a straightforward linear model, $mu = \beta_{0,j} + \beta_{1,j}c$, but we allow the standard deviation to vary as a linear function of log-concentration so as to accurately reflect decreasing precision with decreasing concentration: $\sigma = e^{\gamma_{0} + \gamma_{1,j}c}$; we estimate these parameters as an exponent to constrain $\sigma > 0$.
+For those samples that amplify ($z = 1$), we model the observed Ct value ($y$) as a linear function of our parameter of interest, the log-concentration of target-species DNA under analysis ($c$). We treat $y$ as drawn from a normal distribution $y \sim N(\mu_{i,j}, \sigma_{i,j})$), where each triplicate sample on each qPCR plate has its own estimated mean and standard deviation. The means are estimated as a straightforward linear model, $mu = \beta_{0,j} + \beta_{1,j}c$, but we allow the standard deviation to vary as a linear function of log-concentration so as to accurately capture decreasing precision with decreasing concentration: $\sigma = e^{\gamma_{0} + \gamma_{1,j}c}$; we estimate these parameters as an exponent to constrain $\sigma > 0$.
 
 Samples with known concentrations (i.e., standards) were fit jointly with unknown samples (i.e., environmental samples); because qPCR plate identity was shared among all environmental samples and standards within a plate, this has the effect of applying plate-specific slope and intercept values for the standard curve to each of the environmental samples on the plate.
 
-Taken together with moderately informative priors, the model is:
+We apply moderately informative priors that make use of background information in hand. For example, because qPCR standard curves of all kinds have slopes near -3, this slope becomes our background expectation as embodied in the prior on $\beta_1$, but the standard deviation of that prior leaves plenty of room for this background to be overwhelmed by the observed data. The same logic applies to the intercept of the standard curve, which in qPCR (for any given species) generally falls near 39 cycles, an expectation that we formalize by having $\beta_0$ drawn from a normal distribution with $\mu = 39$ and $\sigma = 3$.
+
+Taken together with priors, the model is:
 
 ```{=tex}
-\begin{flalign*}
+\begin{gather*}
 z_{i,j} \sim bernoulli(\theta_{i,j}) \\
 \theta_{i,j} = logit^{-1}(\phi*c_{i,j}) \\[4mm]
-y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{  if } z_{i,j} == 1 \\
+y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{    if } z_{i,j} = 1 \\
 \mu_{i,j} = \beta_{0,j} + \beta_{1,j} * c_{i,j} \\
-\sigma_{i,j} = e^{\gamma_{0}  + \gamma_{1,j}*c_{i,j}} \\
-\beta_{0} \sim normal(39, 3) \\[4mm]
+\sigma_{i,j} = e^{\gamma_{0}  + \gamma_{1,j}*c_{i,j}} \\[4mm]
+\beta_{0} \sim normal(39, 3) \\
 \beta_{1} \sim normal(-3, 1) \\
 \gamma_{1} \sim normal(0,5) \\
-\gamma_{0} \sim normal(-2,1) \\
-\end{flalign*}
+\gamma_{0} \sim normal(-2,1)
+\end{gather*}
 ```
 ![FIGSX_qPCR_calibration: Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/Figures/qPCR_calibration_supplemental.png)
 
-Model Diagnostics
-
-3 chains, 1500 iterations, $\hat{R} \leq 1.04$
+Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.002$.
 
 ## Expanding Proportions into Absolute Abundances
+
+As described in the main text, calibrated metabarcoding analysis yielded quantitative estimates of the proportions of species' DNA in environmental samples prior to PCR. 
+
+We then converted these proportions into absolute abundances by expansion, in light of the qPCR results for our reference species *O. clarkii*. We estimated the total amplifiable salmonid DNA in environmental sample $i$ as $DNA_{salmonid_{i}} = \frac{[qPCR_{reference_{i}}]}{Proportion_{reference_{i}}}$, and then expanded species' proportions into absolute concentrations by multiplying these sample-specific total concentrations by individual species' proportions, such that for species $j$ in sample $i$, $DNA_{i,j} = DNA_{salmonid_{i}} * Proportion_{i,j}$.
 
 See Pont et al. 2022; McClaren 2022 pre-print
 
@@ -112,3 +116,10 @@ Note that the time-series model treats DNA concentrations at time zero, $\mu_0$,
 The $\eta$ term gives us a way of estimating the effects of the culverts themselves on each species, after subtracting out the effects of autocorrelation, and other modeled parameters. The difference between upstream and downstream values of $eta$ for a given species/creek/time yields our estimate of this effect.
 
 This model shares enough information across time points (within a creek) and across creeks (within a time point) that we can use it to infer DNA concentrations that we do not actually observe -- we treat the temporal/spatial points to be inferred as missing data, parameters to be estimated by the larger model.
+
+[insert example figure]
+
+
+Model Diagnostics: 3 chains, 2500 iterations, for all parameters, 
+<!-- $\hat{R} \leq 1.002$. -->
+

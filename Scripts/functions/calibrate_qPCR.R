@@ -23,6 +23,7 @@
               fn3 <- ifelse(whichmarker, 3,2)
               
               filename = qPCRfiles[plate_num]
+              filename = gsub(".+quantitative","",filename) #RPK added to deal w changing paths on different computers
               filename2 = unlist(strsplit(filename, "_"))[4]
               filename3 = unlist(strsplit(filename2,"-"))[fn3]
               filename4 = str_sub(filename3, start=1, end =3)
@@ -159,7 +160,7 @@
           # stan_qPCR_data <- prepare_stan_data_qPCR(q)
       
       
-      calibrate_qPCR <- function(stanmodelname, dataname, NCHAINS = 3, WARMUP = 500, ITER = 1500){
+      calibrate_qPCR <- function(stanmodelname, dataname, NCHAINS = 3, WARMUP = 500, ITER = 2500){
         #actual calibration in stan
         #input = named list
         #output = posterior samples for many params

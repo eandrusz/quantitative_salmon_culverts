@@ -122,13 +122,13 @@ summary(stanMod)$summary[,"Rhat"] %>% sort() %>% tail()
 #shinystan::launch_shinystan(stanMod)
 # drop_parameters(as.shinystan(stanMod), pars = c("eta", "alpha", "mu", "mu_0")) %>% launch_shinystan()
 # 
-# traceplot(stanMod, par = c("sigma_eta", "sigma_dna"))
+# traceplot(stanMod, par = c("sigma_dna"))
 # ############################
 
 # Save, if desired
 # saveRDS(list(stan_data,
 #              stanMod,
-#              f), file = here("Scripts/timeseries_model/modelFit_20221102.RDS"))
+#              f), file = here("Scripts/timeseries_model/modelFit_20221103.RDS"))
 
 
 

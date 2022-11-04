@@ -2,7 +2,7 @@ library(tidyverse)
 library(here)
 
 ####
-stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221029.RDS"))
+stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221103.RDS"))
 
 f <- stanMod[3][[1]]  #data in
 s <- stanMod[[2]] #fitted model itself

@@ -25,10 +25,11 @@ library(gtools)
 ## Pull posteriors of Bayesian model for QM
 
 # Ryan's latest
-#bayes_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/bayes_out_3spp.RDS")
+
+bayes_out <- readRDS(here("Output/metabarcoding/bayes_out_3spp.RDS"))
 
 # My latest
-bayes_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/bayes_out_salmonidonly.RDS")
+# bayes_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/bayes_out_salmonidonly.RDS")
 
 grabthese <- grep("int_samp_small", names(bayes_out$Bayes_modelfit@sim$samples[[1]]))
 postSamples <- bayes_out$Bayes_modelfit@sim$samples[[1]][grabthese]
@@ -55,8 +56,8 @@ b$species <- rep(colnames(bayes_out$Bayes_estimates),
 
 ## Pull posteriors for qPCR data for cutthroat 
 
-qMod_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
-#qMod_out <- readRDS(here("Output","qpcr","coho_qMod_out.RDS"))
+# qMod_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
+qMod_out <- readRDS(here("Output","qpcr","cut_qMod_out.RDS"))
 
 cut_names <- readRDS(here("Output","qpcr","cut_modeled_conc.RDS")) %>%
   mutate(creek = case_when(creek == "4Pad" & station == "Dn" ~ "4Pad11",
@@ -175,13 +176,13 @@ quants_to_plot <- mergedc %>%
 ggplot(quants_to_plot, aes(x=newtime, y=log10(meandnaconc), color=species)) +
   geom_point() +
   facet_grid(~creek ~station ~species) +
-  scale_color_manual(values = pal_okabe_ito) +
+  # scale_color_manual(values = pal_okabe_ito) +
   guides(color= 'none') + 
   labs(x="Date (YY-MM)", y= "Log10 copies/L water") + 
   theme_bw() + 
   scale_x_discrete(guide = guide_axis(angle = -45))
 
-ggsave(here("Output","Figures","quant_ts_after_qm_EArun20221020.png"), units="in", width=12, height=8)
+# ggsave(here("Output","Figures","quant_ts_after_qm_EArun20221020.png"), units="in", width=12, height=8)
 
 ggplot(quants_to_plot, aes(x=newtime, y=log10(meantotdna))) +
   geom_point() +
@@ -190,13 +191,13 @@ ggplot(quants_to_plot, aes(x=newtime, y=log10(meantotdna))) +
   theme_bw() + 
   scale_x_discrete(guide = guide_axis(angle = -45))
 
-ggsave(here("Output","Figures","totaldna_ts_after_qm.png"))
+# ggsave(here("Output","Figures","totaldna_ts_after_qm.png"))
 
 
 simple <- quants_to_plot %>% 
   select(c(bottle, newtime, creek, station, bio, species, meanpropreads, meancutdna, meantotdna, meandnaconc))
 
-write_rds(simple, here("Output","salmonids_abs_abundance_bio_posterior_rpk.RDS"))
+# write_rds(simple, here("Output","salmonids_abs_abundance_bio_posterior_3spp.RDS"))
 
 
 
