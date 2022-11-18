@@ -124,12 +124,33 @@ for (d in 1:Nstations){
 }
 
 generated quantities{
- vector[Nobs] log_lik;
-   for (i in 1:Nobs){
-    log_lik[i]  =  normal_lpdf(y_logeDNA[i] | mu[time_idx[i], station_idx[i], species_idx[i], creek_idx[i]], 
-                          sigma_dna[species_idx[i]]);
+ real delta[Ntime-1, Nspecies, Ncreek]; //difference between upstream and downstream of culvert
 
-  }
+// for (i in 1:Nobs){
+//   delta[i] = normal_rng(mu[time_idx[i], station_idx[i], species_idx[i], creek_idx[i]], 
+//                           sigma_dna[species_idx[i]]);
+// }
+
+    for (t in 2:Ntime){
+        for (j in 1:Nspecies){
+          for (i in 1:Ncreek){
+             for (r in 1:Nconstruction){
+              delta[t-1,j,i] = eta[t-1,2,j,i] - eta[t-1,1,j,i]; //upstream minus downstream
+            }
+          }
+        }
+      }
+
+
+
+ // vector[Nobs] log_lik;
+ //   for (i in 1:Nobs){
+ //    log_lik[i]  =  normal_lpdf(y_logeDNA[i] | mu[time_idx[i], station_idx[i], species_idx[i], creek_idx[i]], 
+ //                          sigma_dna[species_idx[i]]);
+ // 
+ //  }
+
+
 
  
 }
