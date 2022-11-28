@@ -31,7 +31,7 @@ source(here("Scripts","functions", "calibrate_metabarcoding.R"))
 
 # read in taxa table 
 taxa_table <- read.csv(here("Output","metabarcoding", "taxa_table.csv"))
-mock <- readRDS(here("Output","metabarcoding","20221018_mockdatatocalibrate_salmonidonly.RDS"))
+mock <- readRDS(here("Output","metabarcoding","20221118_mockdatatocalibrate.RDS"))
 
 enviro <- taxa_table %>% 
   filter(! str_detect(Sample_name, "MC")) %>% 
@@ -42,31 +42,19 @@ enviro <- taxa_table %>%
   dplyr::rename(Nreads = totalReads) %>% 
   dplyr::select(-marker)
 
-#enviro <- enviro[1:200,]
-
-# enviro <- readRDS(here("Output", "metabarcoding", "envirodata.all.for.qm.RDS"))
-# enviro <- enviro %>% 
-#   dplyr::rename(species = taxon) %>% 
-#   dplyr::rename(Nreads = totReads) %>% 
-#   filter(station != "Up5") %>% 
-#   mutate(station = case_when(station == "Up11" ~ "Up", 
-#                              TRUE ~ station))
-
+# only focus on four salmonids
 mock <- mock %>%
-  filter(str_detect(species, "Oncorhynchus"))
-# %>% 
-#   filter(CommType == "Even") %>% 
-#   filter(Tech_Rep <4)
+  filter(species %in% c("Oncorhynchus clarkii","Oncorhynchus kisutch","Oncorhynchus mykiss","Oncorhynchus nerka"))
 
 # Prepare for stan model 
 qmdata <- format_metabarcoding_data(enviro, mock)
 stan_metabarcoding_data <- makeDesign(qmdata, N_pcr_cycles = 43)
 
 # Set color palette so don't change when plot
-o_i_colors <- c(rgb(230, 159,   0, maxColorValue = 255),  # orange
+o_i_colors <- c(#rgb(230, 159,   0, maxColorValue = 255),  # orange
                 rgb( 86, 180, 233, maxColorValue = 255),  # skyblue
                 rgb(  0, 158, 115, maxColorValue = 255),  # green
-                rgb(240, 228,  66, maxColorValue = 255),  # yellow
+                #rgb(240, 228,  66, maxColorValue = 255),  # yellow
                 rgb(  0, 114, 178, maxColorValue = 255),  # blue
                 rgb(204, 121, 167, maxColorValue = 255)   # purple
 )
@@ -95,15 +83,18 @@ ML_out$ML_estimates %>%
   facet_grid(~creek ~station ~time) +
   scale_fill_manual(values = pal_okabe_ito)
 
-ggsave(here("Output","Figures","ML_add_samples","allspecies","n200.png"))
+#ggsave(here("Output","Figures","ML_add_samples","allspecies","n200.png"))
 
 ####################################################################
 # Run Bayesian QM model
 ####################################################################
 
 bayes_out <- QM_bayes(here("Scripts", "functions", "quant_metabar_rosetta_noSampleEta.stan"), stan_metabarcoding_data)
+#write_rds(bayes_out, "/Users/elizabethandruszkiewicz/Desktop/20221121_bayesout_4spp.RDS")
 
-write_rds(bayes_out, "/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/bayes_out_salmonidonly.RDS")
+summaryout <- summary(bayes_out$Bayes_modelfit)$summary
+#write.csv(summaryout, "/Users/elizabethandruszkiewicz/Desktop/20221121_bayesout_4spp_summary.csv")
+
 
 bayes_out$Bayes_estimates %>%
   rownames_to_column("sample") %>%
@@ -111,12 +102,29 @@ bayes_out$Bayes_estimates %>%
   separate(col = sample, into = c("time", "creek", "station", "biol"), remove = FALSE) %>% 
   mutate(station = case_when(station == 1 ~ "Down",
                              station == 2 ~ "Up")) %>% 
+  separate(time, into = c("month","year"), sep = 2, remove=FALSE) %>% 
+  unite(newtime, c(year,month), sep="-", remove=FALSE) %>% 
   filter(value > 0.001) %>%
-  ggplot(aes(x = biol, fill = species, y = value)) +
+  mutate(creek = case_when(creek == "1Prt" ~ "Portage",
+                           creek == "2Brn" ~ "Barnes",
+                           creek == "3Chk" ~ "Chuckanut",
+                           creek == "4Pad" ~ "Padden",
+                           creek == "5Sqm" ~ "Squalicum",
+                           TRUE ~ creek))  %>% 
+  mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum', 'Barnes'))) %>% 
+  unite(creekstntime, c(creek,station,time), remove=FALSE) %>% 
+  group_by(creekstntime) %>% 
+  mutate(sumprop = sum(value)) %>% 
+  mutate(avgprop = value/sumprop) %>%
+  ggplot(aes(x = newtime, fill = species, y = avgprop)) +
   geom_col() +
   #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))  +
-  facet_grid(~creek ~station ~time) +
+  facet_grid(~facetorder ~station) +
   scale_fill_manual(values = pal_okabe_ito) + 
-  labs(x="Biological Replicate", y="Proportion of DNA", fill="Species")
+  scale_color_manual(values = pal_okabe_ito) +
+  ylab("Proportion of DNA after QM correction") +
+  labs(x="Date (YY-MM)", y="Proportion of DNA after QM correction", fill="Species", color="") %>% 
+  scale_x_discrete(guide = guide_axis(angle = -45)) +
+  theme_bw()
 
-ggsave(here("Output","Figures","QMmodelresults_salmonids_20221020.png"))
+#ggsave(here("Output","Figures","20221121_proportions_after_qm.png"))

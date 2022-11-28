@@ -25,9 +25,9 @@ library(ggplot2)
 library(gridExtra)
 
 # Read in files
-padflow <- read.csv(here("Input","qpcr","flow","Padden_Creek_Discharge.Time_Series_Data.2021110822572368.csv"), skip=29)[,1:2]
-sqmflow <- read.csv(here("Input","qpcr","flow","Squalicum_Creek_Discharge.Time_Series_Data.2021110822504744.csv"), skip=27)[,1:2]
-chkflow <- read.csv(here("Input","qpcr","flow","Chuckanut_Creek.Time_Series_Data.2021110823201271.csv"), skip=30)[,1:2]
+padflow <- read.csv(here("Input","qpcr","flow","Padden_Creek_Computed_Discharge_(cfs).Time_Series_Data.2022102422231948.csv"), skip=29)[,1:2]
+sqmflow <- read.csv(here("Input","qpcr","flow","Squalicum_Creek_Computed_Discharge_(cfs).Time_Series_Data.2022102422132690.csv"), skip=27)[,1:2]
+chkflow <- read.csv(here("Input","qpcr","flow","Chuckanut_Creek_Computed_Discharge_(cfs).Time_Series_Data.2022102422194411.csv"), skip=30)[,1:2]
 
 # read in when filtering occurred 
 filtermeta <- readRDS(here("Output","qpcr","backpack","adj_vol_filtered.RDS"))
@@ -49,12 +49,14 @@ pad.flow <- padflow %>%
   mutate(dayplot = day(timeplot)) %>% 
   mutate(hourplot = hour(timeplot)) %>% 
   mutate(minplot = minute(timeplot)) %>% 
-  filter(yearplot > 2020) 
+  filter(yearplot > 2020) %>% 
+  filter(timeplot < "2022-04-01 00:00:00 UTC")
   
-
 sqm.flow <- sqmflow %>% 
-  add_column(creek = "Squalicum") %>% 
   dplyr::rename(flow_cfs = Discharge.West.Street..cfs.) %>% 
+  add_row(TimeStamp="4/1/2022 0:00", flow_cfs =0) %>% 
+  add_row(TimeStamp="11/16/2021 9:30", flow_cfs =0) %>% 
+  add_column(creek = "Squalicum") %>% 
   mutate(flow_m3s = flow_cfs*0.028316847) %>% 
   mutate(timeplot = parse_date_time(TimeStamp, "mdy_HM", tz = "US/Pacific")) %>% 
   mutate(timeplot = with_tz(timeplot, "UTC")) %>% 
@@ -67,8 +69,10 @@ sqm.flow <- sqmflow %>%
   filter(yearplot > 2020) 
 
 chk.flow <- chkflow %>% 
+  dplyr::rename(flow_cfs = Discharge.Arroyo.Park..cfs.) %>%
+  add_row(TimeStamp="4/1/2022 0:00", flow_cfs =0) %>%
+  add_row(TimeStamp="11/12/2021 00:00", flow_cfs =0) %>%
   add_column(creek = "Chuckanut") %>% 
-  dplyr::rename(flow_cfs = Discharge.Arroyo.Park..cfs.) %>% 
   mutate(flow_m3s = flow_cfs*0.028316847) %>% 
   mutate(timeplot = parse_date_time(TimeStamp, "mdy_HM", tz = "US/Pacific")) %>% 
   mutate(timeplot = with_tz(timeplot, "UTC")) %>% 
@@ -78,7 +82,7 @@ chk.flow <- chkflow %>%
   mutate(dayplot = day(timeplot)) %>% 
   mutate(hourplot = hour(timeplot)) %>% 
   mutate(minplot = minute(timeplot)) %>% 
-  filter(yearplot > 2020) 
+  filter(yearplot > 2020)
 
 # clean up sample collection metadata 
 
@@ -96,20 +100,30 @@ filtermetaplot <- filtermeta %>%
   mutate(timeplot = round_date(timeplot, unit="15 minutes")) %>% 
   mutate(daysampletoavg = floor_date(timeplot, unit="day"))
 
+
+#pad.flow.save <- pad.flow %>% select(c(timeplot, flow_m3s)) %>% ungroup() %>% mutate(creek="Padden")
+#pad.flow.save <- pad.flow %>% select(c(timeplot, flow_m3s)) %>% ungroup()
+#pad.flow.save <- pad.flow %>% select(c(timeplot, flow_m3s)) %>% ungroup()
+
+#write.csv(pad.flow.save, here("Output", "qpcr", "pad_hourly_flow.csv"), row.names=FALSE)
+
 ####################################################################
 # Visualize 
 ####################################################################
 
 padplot <- ggplot(pad.flow, aes(x=timeplot, y=flow_m3s)) + 
   geom_line() +
+  theme_bw() +
   labs(x="Date", y="Flow, m^3/s", title = "Padden Flow")
 
 sqmplot <- ggplot(sqm.flow, aes(x=timeplot, y=flow_m3s)) + 
   geom_line() +
+  theme_bw() +
   labs(x="Date", y="Flow, m^3/s", title = "Squalicum Flow")
 
 chkplot <- ggplot(chk.flow, aes(x=timeplot, y=flow_m3s)) + 
   geom_line() +
+  theme_bw() +
   labs(x="Date", y="Flow, m^3/s", title = "Chuckanut Flow")
 
 grid.arrange(padplot, sqmplot, chkplot, ncol=1, nrow =3)
@@ -185,57 +199,99 @@ sqm.daily <- filtermetaplot %>%
 
 pad.discrete <- filtermetaplot %>% 
   filter(creek=="Padden") %>% 
-  left_join(pad.flow %>% select(c(timeplot, flow_m3s)), by = "timeplot")
+  left_join(pad.flow %>% select(c(timeplot, flow_m3s)), by = "timeplot") %>% 
+  mutate(yearplot = year(timeplot)) %>% 
+  mutate(monthplot = month(timeplot)) %>% 
+  mutate(dayplot = day(timeplot)) 
 
 chk.discrete <- filtermetaplot %>% 
   filter(creek=="Chuckanut") %>% 
-  left_join(chk.flow %>% select(c(timeplot, flow_m3s)), by = "timeplot")
+  left_join(chk.flow %>% select(c(timeplot, flow_m3s)), by = "timeplot") %>% 
+  mutate(yearplot = year(timeplot)) %>% 
+  mutate(monthplot = month(timeplot)) %>% 
+  mutate(dayplot = day(timeplot)) 
 
 sqm.discrete <- filtermetaplot %>% 
   filter(creek=="Squalicum") %>% 
-  left_join(sqm.flow %>% select(c(timeplot, flow_m3s)), by = "timeplot")
+  left_join(sqm.flow %>% select(c(timeplot, flow_m3s)), by = "timeplot") %>% 
+  mutate(yearplot = year(timeplot)) %>% 
+  mutate(monthplot = month(timeplot)) %>% 
+  mutate(dayplot = day(timeplot)) 
 
 ####################################################################
 # Visualize now with discrete flow at time of sampling
 ####################################################################
 
 padplot <- ggplot() + 
-  geom_point(data=pad.discrete, aes(x=timeplot, y=flow_m3s), size=3, bg="blue", pch=21) +
   geom_line(data=pad.flow, aes(x=timeplot, y=flow_m3s), color="darkgrey") +
-  geom_point(data=pad.daily, aes(x=timeplot, y=meandayflow), size=3, bg="cyan", pch=22) +
-  geom_point(data=pad.monthly, aes(x=timeplot, y=meanmonthflow), size=3, bg="aquamarine", pch=23) +
-  labs(x="Date", y="Flow, m^3/s", title = "Padden Flow") +
+  geom_point(data=pad.discrete, aes(x=timeplot, y=flow_m3s), size=3,  pch=21) +
+  #geom_point(data=pad.daily, aes(x=timeplot, y=meandayflow), size=3, bg="cyan", pch=22) +
+  #geom_point(data=pad.monthly, aes(x=timeplot, y=meanmonthflow), size=3, bg="aquamarine", pch=23) +
+  labs(x="Date", y=bquote('Average Discharge '(m^3/s)), title = "Padden Discharge") +
   theme_bw() 
 
 chkplot <- ggplot() + 
-  geom_point(data=chk.discrete, aes(x=timeplot, y=flow_m3s), size=3, bg="blue", pch=21) +
   geom_line(data=chk.flow, aes(x=timeplot, y=flow_m3s), color="darkgrey") +
-  geom_point(data=chk.daily, aes(x=timeplot, y=meandayflow), size=3, bg="cyan", pch=22) +
-  geom_point(data=chk.monthly, aes(x=timeplot, y=meanmonthflow), size=3, bg="aquamarine", pch=23) +
-  labs(x="Date", y="Flow, m^3/s", title = "Chuckanut Flow") +
+  geom_point(data=chk.discrete, aes(x=timeplot, y=flow_m3s), size=3,  pch=21) +
+  #geom_point(data=chk.daily, aes(x=timeplot, y=meandayflow), size=3, bg="cyan", pch=22) +
+  #geom_point(data=chk.monthly, aes(x=timeplot, y=meanmonthflow), size=3, bg="aquamarine", pch=23) +
+  labs(x="Date", y=bquote('Average Discharge '(m^3/s)), title = "Chuckanut Discharge") +
   theme_bw() 
 
 sqmplot <- ggplot() + 
-  geom_point(data=sqm.discrete, aes(x=timeplot, y=flow_m3s), size=3, bg="blue", pch=21) +
   geom_line(data=sqm.flow, aes(x=timeplot, y=flow_m3s), color="darkgrey") +
-  geom_point(data=sqm.daily, aes(x=timeplot, y=meandayflow), size=3, bg="cyan", pch=22) +
-  geom_point(data=sqm.monthly, aes(x=timeplot, y=meanmonthflow), size=3, bg="aquamarine", pch=23) +
-  labs(x="Date", y="Flow, m^3/s", title = "Squalicum Flow") +
+  geom_point(data=sqm.discrete, aes(x=timeplot, y=flow_m3s), size=3, pch=21) +
+  #geom_point(data=sqm.daily, aes(x=timeplot, y=meandayflow), size=3, bg="cyan", pch=22) +
+  #geom_point(data=sqm.monthly, aes(x=timeplot, y=meanmonthflow), size=3, bg="aquamarine", pch=23) +
+  labs(x="Date", y=bquote('Average Discharge '(m^3/s)), title = "Squalicum Discharge") +
   theme_bw() 
 
-grid.arrange(chkplot, padplot, sqmplot,ncol=1, nrow =3)
+grid.arrange(padplot, chkplot, sqmplot,ncol=1, nrow =3)
 
 #save
-g <- arrangeGrob(chkplot, padplot, sqmplot, nrow=3) #generates g
-ggsave(file=here("Output","Figures","flow_gauges.png"),g)
+g <- arrangeGrob(padplot, chkplot, sqmplot, nrow=3) #generates g
+#ggsave(file=here("Output","Figures","flow_gauges.png"),g)
 
 ####################################################################
 # Write output 
 ####################################################################
 
 all_monthly_avg <- rbind(pad.monthly, chk.monthly, sqm.monthly)
-write.csv(all_monthly_avg, here("Output", "qpcr", "monthly_flow.csv"))
+write.csv(all_monthly_avg, here("Output", "qpcr", "monthly_flow.csv"), row.names=FALSE)
 
 all_daily_avg <- rbind(pad.daily, chk.daily, sqm.daily)
-write.csv(all_monthly_avg, here("Output", "qpcr", "daily_flow.csv"))
+write.csv(all_monthly_avg, here("Output", "qpcr", "daily_flow.csv"), row.names=FALSE)
+
+all_closest <- rbind(pad.discrete, chk.discrete, sqm.discrete)
+write.csv(all_closest, here("Output", "qpcr", "closest_flow.csv"), row.names=FALSE)
+
+
+#write.csv(pad.discrete, here("Output", "qpcr", "pad_sampling_flow.csv"), row.names=FALSE)
+
+
+####################################################################
+# some stats....  
+####################################################################
+
+
+padflowstats <- pad.flow %>% 
+  summarize(meanflow = mean(flow_m3s), maxflow = max(flow_m3s))
+
+chkflowstats <- chk.flow %>% 
+  summarize(meanflow = mean(flow_m3s), maxflow = max(flow_m3s))
+
+sqmflowstats <- sqm.flow %>% 
+  summarize(meanflow = mean(flow_m3s), maxflow = max(flow_m3s))
+
+padlow <- pad.flow %>% 
+  filter(flow_cfs < 0.11)
+padperclow = nrow(padlow)/nrow(pad.flow)*100
+
+chklow <- chk.flow %>% 
+  filter(flow_cfs < 0.11)
+chkperclow = nrow(chklow)/nrow(chk.flow)*100
+
+sqmlow <- sqm.flow %>% 
+  filter(flow_cfs < 0.21)
+sqmperclow = nrow(sqmlow)/nrow(sqm.flow)*100
 

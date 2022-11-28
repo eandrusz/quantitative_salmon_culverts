@@ -1,0 +1,315 @@
+---
+title: "Plot Manuscript Figures -- Salmonid Culverts"
+author: "Kelly"
+date: "2022-11-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(unikn)
+
+####
+#read in time series model fit
+#stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221111.RDS"))
+#stanMod <- readRDS(here("Scripts","timeseries_model","modelFit_20221118_flowcorrected.RDS"))
+stanMod <- readRDS(here("Scripts","timeseries_model","20221123_modelFit_flowcorrected.RDS"))
+
+
+f <- stanMod[3][[1]]  #data in
+s <- stanMod[[2]] #fitted model itself
+```
+
+Summarize expected values at each time/station/species/creek by capturing parameter estimates for mean and standard deviation from model fit.
+
+```{r, echo = F, warning = F, message= F}
+
+resOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
+                      station_idx = 1:length(unique(f$station_idx)),
+                      species_idx = 1:length(unique(f$species_idx)),
+                      creek_idx = 1:length(unique(f$creek_idx))) %>%  
+  mutate(mean_est = rstan::summary(s, par = "mu")$summary[,1],
+         ci25 = rstan::summary(s, par = "mu")$summary[,5],
+         ci75 = rstan::summary(s, par = "mu")$summary[,7]) %>% 
+  left_join(f %>% dplyr::select(creek, species, creek_idx, species_idx) %>% distinct()) %>% 
+  #right_join(f %>% dplyr::select(meandnaconc, station_idx, time_idx, creek_idx, species_idx)) %>% 
+  right_join(f %>% dplyr::select(meandnaconcflow, station_idx, time_idx, creek_idx, species_idx)) %>% 
+  left_join(data.frame(sigma_dna = rstan::summary(s, par = "sigma_dna")$summary[,1], 
+                       species_idx = 1:1:length(unique(f$species_idx))))
+```
+
+Sample posterior for expected value +/- observation variance at each time/station/species/creek
+
+```{r, echo = F, warning = F, message = F}
+
+  #function to generate samples drawn from normal distribution,
+  #the params of which are the posterior distribs for mean and SD
+  #this captures both process and observation variance
+  getPostPred <- function(modname, time_idx, station_idx, species_idx, creek_idx){
+        s = modname
+        n = length(unlist(rstan::extract(s, par = "mu[1,1,1,1]")))
+        f_mu = paste0("mu[",
+                      time_idx,",",
+                      station_idx,",",
+                      species_idx,",",
+                      creek_idx,"]")
+        f_s = paste0("sigma_dna[",species_idx,"]")
+        
+        postsamples <- rnorm(n, 
+                             unlist(rstan::extract(s, par = f_mu)),
+                             unlist(rstan::extract(s, par = f_s))
+        ) 
+        
+        return(quantile(postsamples, c(.025, .05, .25, .5, .75, .9, .975)))
+  }
+
+  #summarize and save in this object
+  ppOut <- expand_grid(time_idx = 1:length(unique(f$time_idx)),
+                         station_idx = 1:length(unique(f$station_idx)),
+                         species_idx = 1:length(unique(f$species_idx)),
+                         creek_idx = 1:length(unique(f$creek_idx)))
+    ppOut[,5:11] <- 0.0
+    colnames(ppOut)[5:11] <- paste0("pp_", c("025", "05", 25, 50, 75, 90, 975))
+    
+    for (i in 1:nrow(ppOut)){
+      ppOut[i,5:11] <- as.list(getPostPred(s,
+                                           ppOut$time_idx[i], 
+                                           ppOut$station_idx[i], 
+                                           ppOut$species_idx[i], 
+                                           ppOut$creek_idx[i]))
+    }
+```
+
+Make combined-species plot of trends over time
+
+```{r, echo = F, warning = F, message = F}
+  multispeciesTrends <- f %>%
+    mutate(logY = log(meandnaconcflow)) %>%
+    #mutate(logY = log(meandnaconc)) %>%
+    right_join(resOut) %>% # get individual expected values for each sample
+    # mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx - 10),
+    #        # month = as.factor(month)
+    # ) %>% 
+    left_join(ppOut) %>% # get posterior estimates from full model (process + obs variance)
+    drop_na() %>% 
+    mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
+    mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum'))) 
+
+pad_only <- multispeciesTrends %>% filter(creek=="Padden")
+
+multispeciesTrendsplot <- ggplot() +  #treating meandnaconc as observations
+    geom_rect(data=pad_only, aes(xmin = 7, xmax = 12, ymin = -Inf, ymax = Inf), alpha = .01, color=NA, fill = "grey") +
+    #geom_point(data=multispeciesTrendsplot, aes(x = newtime, y = log(meandnaconc), color = station), alpha = .2) +
+    geom_point(data=multispeciesTrends, aes(x = newtime, y = log(meandnaconcflow), color = station), alpha = .2) +
+    geom_point(data=multispeciesTrends, aes(x = newtime, y = mean_est, color = station), size = 1.5, alpha = .5) + #mean estimates of mu
+    geom_smooth(data=multispeciesTrends, aes(x = newtime, y = mean_est, color = station), se = F, size = 1, alpha = .5, span = .2) +
+    geom_segment(data=multispeciesTrends, aes(x = newtime, xend = newtime, y = pp_025, yend = pp_975, color = station), size = .3,  alpha = .2) + #full error model creates CI
+    geom_segment(data=multispeciesTrends, aes(x = newtime, xend = newtime, y = pp_25, yend = pp_75, color = station), size = .7, alpha = .4) +
+    facet_grid(facetorder~species) +
+    xlab("Date (YY-MM)") + ylab("Log DNA Concentration (copies/L)") +
+    labs(color='') +
+    # ggtitle(paste0(unique(f$species)[i], "\n(predicted mean +/- 95 CI)")) +
+    theme_bw() +
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major.x = element_blank(),
+          legend.position = "bottom",
+          legend.box.spacing = unit(0, "mm")) + 
+    scale_x_discrete(guide = guide_axis(angle = -45))  
+    
+   # ggsave(multispeciesTrendsplot, file = here("Output/Figures/20221123_multispeciesTrends_flowcorrected.png"), width=9, height=7)
+
+```
+
+Make species-specific plots and save as ggplot objects
+
+```{r, echo = F, warning = F, message = F}
+ 
+for (i in 1:length(unique(f$species))){
+  assign(paste0("p",i), value = 
+           resOut %>%
+           mutate(logY = log(meandnaconcflow)) %>%
+           mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum'))) %>% 
+           left_join(ppOut) %>% 
+           mutate(station = ifelse(station_idx == 1, "Downstream", "Upstream")) %>%
+           filter(species_idx == i) %>%
+           ggplot(aes(x = time_idx, y = log(meandnaconcflow), color = station)) +
+           geom_point(alpha = .2) +
+           geom_point(aes(x = time_idx, y = mean_est, color = station), size = 1.5, alpha = .5) +
+           geom_segment(aes(x = time_idx, xend = time_idx, y = pp_025, yend = pp_975, color = station), size = .3, alpha = .2) +
+           geom_segment(aes(x = time_idx, xend = time_idx, y = pp_25, yend = pp_75, color = station), size = .7, alpha = .4) +
+           facet_grid(facetorder~species) +
+           xlab("Date (YY-MM)") + ylab("Log DNA Concentration (copies/L)") +
+           ggtitle(paste0(unique(f$species)[i], "\n(predicted mean +/- 95 CI)")) +
+           theme_bw() +
+           theme(panel.grid.minor = element_blank(),
+                 panel.grid.major.x = element_blank()) +
+           scale_x_continuous(breaks = c(1:12),
+                              labels = c("21-03","21-04","21-05","21-06","21-07","21-08","21-09","21-10","21-11","21-12","22-01","22-02")) +
+           guides(x = guide_axis(angle = -45))
+  )
+}
+
+# ggsave(p1, file = here("Output/SupplementalFigures/Oclarkii_timeseries_flowcorrected.png"))
+# ggsave(p2, file = here("Output/SupplementalFigures/Omykiss_timeseries_flowcorrected.png"))
+# ggsave(p3, file = here("Output/SupplementalFigures/Okisutch_timeseries_flowcorrected.png"))
+# ggsave(p4, file = here("Output/SupplementalFigures/Onerka_timeseries_flowcorrected.png"))
+
+```
+
+Effect of construction itself on Padden Creek
+
+```{r, echo = F, warning = F, message = F}
+#recover posterior estimates of gamma term
+    gamma_est <- expand_grid(time_idx = 2:(length(unique(f$time_idx))),
+                               species_idx = 1:length(unique(f$species_idx)),
+                               #creek_idx = 1:length(unique(f$creek)),
+                               #station_idx = 1:length(unique(f$station_idx)),
+                               construction_idx = 1:length(unique(f$construction_idx))
+                               ) %>% 
+      mutate(gamma_mean = NA,
+             gamma_025 = NA,
+             gamma_975 = NA)
+    
+    for (i in 1:nrow(gamma_est)){
+      a <- paste0("gamma[", 
+                  gamma_est$time_idx[i]-1, ",",
+                  gamma_est$species_idx[i], ",",
+                  #gamma_est$creek_idx[i], ",",
+                  #gamma_est$station_idx[i], ",",
+                  gamma_est$construction_idx[i], "]")
+      
+      gamma_est$gamma_mean[i] <- rstan::summary(s, par = a)$summary[,1]
+      gamma_est$gamma_025[i] <- rstan::summary(s, par = a)$summary[,4]
+      gamma_est$gamma_975[i] <- rstan::summary(s, par = a)$summary[,8]
+    }
+
+  # link to information about sampling dates  
+  gamma_est <- f %>% select(newtime, time_idx) %>%
+    distinct() %>%
+    mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx-10)) %>% 
+    left_join(gamma_est)
+
+  Nspp <- length(unique(f$species))
+  
+
+# gamma_est %>% 
+#   left_join(tibble(species_idx = 1:Nspp, jitter = (1:Nspp - median(1:Nspp))*0.07)) %>% 
+#   left_join(f %>% dplyr::select(species_idx, species) %>% distinct()) %>% 
+#   mutate(jitter_time = time_idx + (jitter)) %>% 
+#   filter(gamma_mean != 0) %>% 
+  # filter(construction_idx == 2, species_idx < 4 & month %in% c(1:12)) %>% 
+  # ggplot(aes(x = jitter_time, y = gamma_mean, color = species)) +
+  #   geom_point() +
+  #   geom_segment(aes(x = jitter_time, xend = jitter_time, y = gamma_025, yend = gamma_975)) +
+  #   scale_x_continuous(breaks = c(7:12),
+  #                    labels = c(9:12,1,2)) +
+  #   xlab("Month") + ylab("Gamma")
+
+# colorPal <- c("#8b62ca",
+#               "#55b04a",
+#               "#c760a3",
+#               "#9cb24e",
+#               "#688bcd",
+#               "#c7a03d",
+#               "#4bb092",
+#               "#6d732f")
+  o_i_colors <- c(#rgb(230, 159,   0, maxColorValue = 255),  # orange
+  rgb( 86, 180, 233, maxColorValue = 255),  # skyblue
+  rgb(  0, 158, 115, maxColorValue = 255),  # green
+  #rgb(240, 228,  66, maxColorValue = 255),  # yellow
+  rgb(  0, 114, 178, maxColorValue = 255),  # blue
+  rgb(204, 121, 167, maxColorValue = 255)   # purple
+)
+colorPal <- newpal(col = o_i_colors,
+                        names = c("Oncorhynchus clarkii","Oncorhynchus kisutch","Oncorhynchus mykiss","Oncorhynchus nerka"))
+
+#percent change due to gamma, as expressed by:
+# gamma_mean/(mean_est-gamma_mean)
+(construction_effect <- gamma_est %>% 
+  filter(gamma_mean!= 0) %>% 
+  left_join(tibble(species_idx = 1:Nspp, jitter = (1:Nspp - median(1:Nspp))*0.07)) %>% 
+  left_join(f %>% dplyr::select(species_idx, species) %>% distinct()) %>% 
+  mutate(jitter_time = time_idx + (jitter)) %>% 
+  left_join(resOut %>% filter(creek_idx == 3, station_idx == 1) %>% dplyr::select(time_idx, species_idx, mean_est)) %>% distinct() %>% 
+  mutate(gamma_mean_pct = gamma_mean/(mean_est-gamma_mean)*100,
+         gamma_025_pct = gamma_025/(mean_est-gamma_mean)*100,
+         gamma_975_pct = gamma_975/(mean_est-gamma_mean)*100) %>% 
+  ggplot(aes(x = jitter_time, y = gamma_mean_pct, color = species)) +
+  geom_point() +
+  geom_hline(yintercept=0, color="grey") +
+  geom_segment(aes(x = jitter_time, xend = jitter_time, y = gamma_025_pct, yend = gamma_975_pct)) +
+  scale_x_continuous(breaks = c(7:12),
+                     labels = c("21-09","21-10","21-11","21-12","22-01","22-02")) +
+  theme_bw() +
+  labs( x="Month", y= "Percent Change Due to Culvert Removal", title="Effect of Construction in Padden") +
+  scale_color_discrete(type = colorPal)) + 
+    scale_x_discrete(guide = guide_axis(angle = -45))
+
+ # ggsave(construction_effect, file = here("Output/Figures/20221123_Construction_effect.png"))
+
+```
+
+Effect of culvert -- difference between eta terms above vs. below
+
+```{r, echo = F, warning = F, message = F}
+
+
+delta <- expand_grid(time_idx = 2:(length(unique(f$time_idx))),
+                         #station_idx = 1:length(unique(f$station_idx)),
+                         species_idx = 1:length(unique(f$species_idx)),
+                         creek_idx = 1:length(unique(f$creek))
+                   ) %>% 
+  mutate(delta_mean = NA,
+         delta_025 = NA,
+         delta_975 = NA)
+
+for (i in 1:nrow(delta)){
+  a <- paste0("delta[", 
+              delta$time_idx[i]-1, ",",
+              delta$species_idx[i], ",",
+              delta$creek_idx[i],"]")
+  
+  delta$delta_mean[i] <- rstan::summary(s, par = a)$summary[,1]
+  delta$delta_025[i] <- rstan::summary(s, par = a)$summary[,4]
+  delta$delta_975[i] <- rstan::summary(s, par = a)$summary[,8]
+}
+
+  # link to information about sampling dates  
+delta <- f %>% select(newtime, time_idx) %>%
+    distinct() %>%
+    mutate(month = ifelse(time_idx < 11, time_idx + 2, time_idx-10)) %>% 
+    left_join(delta) %>% 
+    left_join(resOut %>% dplyr::select(time_idx, species_idx, creek_idx, station_idx, mean_est) %>% filter(station_idx == 1) %>% distinct()) %>% 
+    mutate(delta_mean_pct = delta_mean/(mean_est-delta_mean)*100,  #scale to make percent change
+           delta_025_pct = delta_025/(mean_est-delta_mean)*100,
+           delta_975_pct = delta_975/(mean_est-delta_mean)*100) %>% 
+    left_join(f %>% dplyr::select(species_idx, species, creek_idx, creek) %>% distinct())
+  
+  (culvert_effect <-  delta %>% 
+      filter(mean_est > 2) %>% #Filter out very low-conc observations, because ratios make these misleading 
+      ggplot(aes(x = as.factor(month), y = delta_mean_pct)) +
+      geom_boxplot(fill = "grey") +
+      geom_hline(yintercept=0, color="grey") +
+      xlab("Month") + ylab("Mean difference upstream - downstream \n(% of downstream concentration)") +
+      theme_bw()
+      )  #here, just taking means, and summarizing across species and creeks w boxplot
+  
+ # ggsave(culvert_effect, file = here("Output/Figures/20221123_culvert_effect_flowcorrected.png"))
+
+  (culvert_effect_creek_species <-  delta %>% 
+      filter(mean_est > 2) %>% #Filter out very low-conc observations, because ratios make these misleading 
+      drop_na() %>%
+      mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum')))%>% 
+      ggplot(aes(x = as.factor(month), y = delta_mean_pct)) +
+      geom_point() +
+      geom_hline(yintercept=0, color="grey") +
+      facet_grid(facetorder~species, scales="free") +
+      xlab("Month") + ylab("Mean difference upstream - downstream \n(% of downstream concentration)") +
+      theme_bw()
+  )
+  
+  # ggsave(culvert_effect_creek_species, file = here("Output/SupplementalFigures/20221123_culvert_effect_creek_species_flowcorrected.png"))
+  
+```

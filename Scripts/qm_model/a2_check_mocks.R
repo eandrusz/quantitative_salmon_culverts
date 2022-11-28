@@ -41,8 +41,10 @@ input.metadata <- read.csv(here("Input","metabarcoding", "mock_community","start
 # keep only mock community data 
 mock <- taxa_table %>% 
   filter(str_detect(Sample_name, "MC")) %>% 
+  filter(! str_detect(Sample_name, "MC1.Even")) %>% 
   filter(str_detect(Sample_name, "Tissue")) %>%
   filter(str_detect(species, "Oncorhynchus")) %>%    #### IF ONLY SALMONIDS
+  filter(species %in% c("Oncorhynchus clarkii","Oncorhynchus kisutch","Oncorhynchus mykiss","Oncorhynchus nerka")) %>%  ### ONLY FOUR
   group_by(Sample_name) %>% 
   mutate(ReadDepth = sum(totalReads)) %>% 
   mutate(propReads = totalReads/ReadDepth) %>% 
@@ -56,6 +58,7 @@ mock <- taxa_table %>%
   mutate(Tech_Rep = as.integer(Tech_Rep)) %>% 
   dplyr::rename(Species = species)
 
+  
 ggplot(mock, aes(x=Tech_Rep, y=propReads, fill=Species)) +
   geom_col() + 
   guides(fill = "none") +
@@ -66,7 +69,7 @@ start.metadata <- expand_grid(input.metadata,Tech_Rep = 1:3)
 
 start.metadata <- start.metadata %>% 
   filter(! str_detect(Community, "Amplicon")) %>% 
-  filter(str_detect(Species, "Oncorhynchus")) %>%    #### IF ONLY SALMONIDS
+  filter(Species %in% mock$Species) %>%    #### IF ONLY SALMONIDS
   rename(Sample_name = Community) %>% 
   group_by(Sample_name, Tech_Rep) %>% 
   mutate(total_input = sum(Start)) %>% 
@@ -112,7 +115,7 @@ combined.data <- miseq.merge %>%
   filter(start_prop !=0)
 
 # write output to file 
-# write_rds(combined.data, file=here("Output","metabarcoding","20221018_mockdatatocalibrate.RDS"))
+# write_rds(combined.data, file=here("Output","metabarcoding","20221118_mockdatatocalibrate.RDS"))
 
 # write output to file - salmonids only 
 # write_rds(combined.data, file=here("Output","metabarcoding","20221018_mockdatatocalibrate_salmonidonly.RDS"))
@@ -126,7 +129,7 @@ plot(combined.data$start_prop, combined.data$propReads)
 ggplot(combined.data, aes(x = Tech_Rep, y = propReads, fill = species)) +
   geom_col() +  
   guides(fill = "none") +
-  facet_grid(~Community ~CommType, scales="free_x") +
+  facet_grid(~Community ~CommType, scales="free") +
   theme_bw() +
   labs(x="Technical Replicate", y="Proportion of Reads") 
 
@@ -234,10 +237,10 @@ plotmocks <- rbind(plotmocks, mockmodeleven, mockmodelskew)
 ####################################################################
 
 # Set color palette so don't change when plot
-o_i_colors <- c(rgb(230, 159,   0, maxColorValue = 255),  # orange
+o_i_colors <- c(#rgb(230, 159,   0, maxColorValue = 255),  # orange
                 rgb( 86, 180, 233, maxColorValue = 255),  # skyblue
                 rgb(  0, 158, 115, maxColorValue = 255),  # green
-                rgb(240, 228,  66, maxColorValue = 255),  # yellow
+                #rgb(240, 228,  66, maxColorValue = 255),  # yellow
                 rgb(  0, 114, 178, maxColorValue = 255),  # blue
                 rgb(204, 121, 167, maxColorValue = 255)   # purple
 )
@@ -312,9 +315,9 @@ mc3_output_skew <- plotmocks %>%
   scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
 
 #save
-grid.arrange(mc1_output_even, mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
-g <- arrangeGrob(mc1_output_even, mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
-ggsave(file=here("Output","Figures","mock_internal_calibration.png"),g)
+grid.arrange(mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
+g <- arrangeGrob(mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
+# ggsave(file=here("Output","Figures","mock_internal_calibration.png"),g)
 
 
 ####################################################################
@@ -416,126 +419,126 @@ ggplot(compare_alphas, aes(y=species, x=alpha_est, col=calibration)) +
   theme_bw() + 
   labs(x="Estimated Alpha", y="Species", color="Community used as true")
 
-ggsave(file=here("Output","Figures","mock_internal_calibration_compare_alphas.png"))
+# ggsave(file=here("Output","Figures","mock_internal_calibration_compare_alphas.png"))
 
 
-####################################################################
-# Plot 1 to calibrate 2/3 etc   
-####################################################################
-
-
-mockmodel23 <- ML_out_MC1true$ML_estimates %>%
-  rownames_to_column("sample") %>%
-  pivot_longer(-sample, names_to = "species") %>%
-  separate(col = sample, into = c("time", "creek", "station", "biol"), remove = FALSE) %>% 
-  filter(value > 0.001) %>% 
-  dplyr::rename(Community = time, CommType = creek) %>% 
-  dplyr::select(-c(sample, station, biol)) %>% 
-  #mutate(Tech_Rep = -1) %>% 
-  #mutate(typedata = "Modeled") %>% 
-  #mutate(CommType = "Even") %>% 
-  dplyr::rename(prop = value) 
-
-mockmodelskew <- ML_out_eventrue$ML_estimates %>%
-  rownames_to_column("sample") %>%
-  pivot_longer(-sample, names_to = "species") %>%
-  separate(col = sample, into = c("time", "creek", "station", "biol"), remove = FALSE) %>% 
-  filter(value > 0.001) %>% 
-  dplyr::rename(Community = time) %>% 
-  dplyr::select(-c(sample, creek, station, biol)) %>% 
-  mutate(Tech_Rep = -1) %>% 
-  mutate(typedata = "Modeled") %>% 
-  mutate(CommType = "Skew") %>% 
-  dplyr::rename(prop = value)
-
-plotmocks <- rbind(plotmocks, mockmodeleven, mockmodelskew)
-
-####################################################################
-# Plot input, observed, modeled for each community  
-####################################################################
-
-# Set color palette so don't change when plot
-o_i_colors <- c(rgb(230, 159,   0, maxColorValue = 255),  # orange
-                rgb( 86, 180, 233, maxColorValue = 255),  # skyblue
-                rgb(  0, 158, 115, maxColorValue = 255),  # green
-                rgb(240, 228,  66, maxColorValue = 255),  # yellow
-                rgb(  0, 114, 178, maxColorValue = 255),  # blue
-                rgb(204, 121, 167, maxColorValue = 255)   # purple
-)
-#o_i_colors = scales::hue_pal()(length(unique(mock$species)))
-pal_okabe_ito <- newpal(col = o_i_colors,
-                        names = unique(plotmocks$species))
-
-mc1_output_even <- plotmocks %>% 
-  filter(Community == "MC1") %>% 
-  filter(CommType == "Even") %>% 
-  ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
-  geom_col() +  
-  guides(fill = "none") +
-  theme_bw() +
-  scale_fill_manual(values = pal_okabe_ito) +
-  labs(x=" ", y="Proportion", title = "MC1 Even") +
-  scale_x_discrete(breaks=c("-1","0","1","2","3","4","5","6"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
-
-mc1_output_skew <- plotmocks %>% 
-  filter(Community == "MC1") %>% 
-  filter(CommType == "Skew") %>% 
-  ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
-  geom_col() +  
-  guides(fill = "none") +
-  theme_bw() +
-  scale_fill_manual(values = pal_okabe_ito) +
-  labs(x=" ", y=" ", title = "MC1 Skew")  +
-  scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
-
-mc2_output_even <- plotmocks %>% 
-  filter(Community == "MC2") %>% 
-  filter(CommType == "Even") %>% 
-  ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
-  geom_col() +  
-  guides(fill = "none") +
-  theme_bw() +
-  scale_fill_manual(values = pal_okabe_ito) +
-  labs(x=" ", y="Proportion", title = "MC2 Even") +
-  scale_x_discrete(breaks=c("-1","0","1","2","3","4","5","6"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
-
-mc2_output_skew <- plotmocks %>% 
-  filter(Community == "MC2") %>% 
-  filter(CommType == "Skew") %>% 
-  ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
-  geom_col() +  
-  guides(fill = "none") +
-  theme_bw() +
-  scale_fill_manual(values = pal_okabe_ito) +
-  labs(x=" ", y=" ", title = "MC2 Skew")  +
-  scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
-
-mc3_output_even <- plotmocks %>% 
-  filter(Community == "MC3") %>% 
-  filter(CommType == "Even") %>% 
-  ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
-  geom_col() +  
-  guides(fill = "none") +
-  theme_bw() +
-  scale_fill_manual(values = pal_okabe_ito) +
-  labs(x=" ", y="Proportion", title = "MC3 Even") +
-  scale_x_discrete(breaks=c("-1","0","1","2","3","4","5","6"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
-
-mc3_output_skew <- plotmocks %>% 
-  filter(Community == "MC3") %>% 
-  filter(CommType == "Skew") %>% 
-  ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
-  geom_col() +  
-  guides(fill = "none") +
-  theme_bw() +
-  scale_fill_manual(values = pal_okabe_ito) +
-  labs(x=" ", y=" ", title = "MC3 Skew") +
-  scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
-
-#save
-grid.arrange(mc1_output_even, mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
-g <- arrangeGrob(mc1_output_even, mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
-ggsave(file=here("Output","Figures","mock_internal_calibration.png"),g)
-
-
-
+# ####################################################################
+# # Plot 1 to calibrate 2/3 etc   
+# ####################################################################
+# 
+# 
+# mockmodel23 <- ML_out_MC1true$ML_estimates %>%
+#   rownames_to_column("sample") %>%
+#   pivot_longer(-sample, names_to = "species") %>%
+#   separate(col = sample, into = c("time", "creek", "station", "biol"), remove = FALSE) %>% 
+#   filter(value > 0.001) %>% 
+#   dplyr::rename(Community = time, CommType = creek) %>% 
+#   dplyr::select(-c(sample, station, biol)) %>% 
+#   #mutate(Tech_Rep = -1) %>% 
+#   #mutate(typedata = "Modeled") %>% 
+#   #mutate(CommType = "Even") %>% 
+#   dplyr::rename(prop = value) 
+# 
+# mockmodelskew <- ML_out_eventrue$ML_estimates %>%
+#   rownames_to_column("sample") %>%
+#   pivot_longer(-sample, names_to = "species") %>%
+#   separate(col = sample, into = c("time", "creek", "station", "biol"), remove = FALSE) %>% 
+#   filter(value > 0.001) %>% 
+#   dplyr::rename(Community = time) %>% 
+#   dplyr::select(-c(sample, creek, station, biol)) %>% 
+#   mutate(Tech_Rep = -1) %>% 
+#   mutate(typedata = "Modeled") %>% 
+#   mutate(CommType = "Skew") %>% 
+#   dplyr::rename(prop = value)
+# 
+# plotmocks <- rbind(plotmocks, mockmodeleven, mockmodelskew)
+# 
+# ####################################################################
+# # Plot input, observed, modeled for each community  
+# ####################################################################
+# 
+# # Set color palette so don't change when plot
+# o_i_colors <- c(rgb(230, 159,   0, maxColorValue = 255),  # orange
+#                 rgb( 86, 180, 233, maxColorValue = 255),  # skyblue
+#                 rgb(  0, 158, 115, maxColorValue = 255),  # green
+#                 rgb(240, 228,  66, maxColorValue = 255),  # yellow
+#                 rgb(  0, 114, 178, maxColorValue = 255),  # blue
+#                 rgb(204, 121, 167, maxColorValue = 255)   # purple
+# )
+# #o_i_colors = scales::hue_pal()(length(unique(mock$species)))
+# pal_okabe_ito <- newpal(col = o_i_colors,
+#                         names = unique(plotmocks$species))
+# 
+# mc1_output_even <- plotmocks %>% 
+#   filter(Community == "MC1") %>% 
+#   filter(CommType == "Even") %>% 
+#   ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
+#   geom_col() +  
+#   guides(fill = "none") +
+#   theme_bw() +
+#   scale_fill_manual(values = pal_okabe_ito) +
+#   labs(x=" ", y="Proportion", title = "MC1 Even") +
+#   scale_x_discrete(breaks=c("-1","0","1","2","3","4","5","6"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
+# 
+# mc1_output_skew <- plotmocks %>% 
+#   filter(Community == "MC1") %>% 
+#   filter(CommType == "Skew") %>% 
+#   ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
+#   geom_col() +  
+#   guides(fill = "none") +
+#   theme_bw() +
+#   scale_fill_manual(values = pal_okabe_ito) +
+#   labs(x=" ", y=" ", title = "MC1 Skew")  +
+#   scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
+# 
+# mc2_output_even <- plotmocks %>% 
+#   filter(Community == "MC2") %>% 
+#   filter(CommType == "Even") %>% 
+#   ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
+#   geom_col() +  
+#   guides(fill = "none") +
+#   theme_bw() +
+#   scale_fill_manual(values = pal_okabe_ito) +
+#   labs(x=" ", y="Proportion", title = "MC2 Even") +
+#   scale_x_discrete(breaks=c("-1","0","1","2","3","4","5","6"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
+# 
+# mc2_output_skew <- plotmocks %>% 
+#   filter(Community == "MC2") %>% 
+#   filter(CommType == "Skew") %>% 
+#   ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
+#   geom_col() +  
+#   guides(fill = "none") +
+#   theme_bw() +
+#   scale_fill_manual(values = pal_okabe_ito) +
+#   labs(x=" ", y=" ", title = "MC2 Skew")  +
+#   scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
+# 
+# mc3_output_even <- plotmocks %>% 
+#   filter(Community == "MC3") %>% 
+#   filter(CommType == "Even") %>% 
+#   ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
+#   geom_col() +  
+#   guides(fill = "none") +
+#   theme_bw() +
+#   scale_fill_manual(values = pal_okabe_ito) +
+#   labs(x=" ", y="Proportion", title = "MC3 Even") +
+#   scale_x_discrete(breaks=c("-1","0","1","2","3","4","5","6"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
+# 
+# mc3_output_skew <- plotmocks %>% 
+#   filter(Community == "MC3") %>% 
+#   filter(CommType == "Skew") %>% 
+#   ggplot(aes(x = Tech_Rep, y = prop, fill = species)) +
+#   geom_col() +  
+#   guides(fill = "none") +
+#   theme_bw() +
+#   scale_fill_manual(values = pal_okabe_ito) +
+#   labs(x=" ", y=" ", title = "MC3 Skew") +
+#   scale_x_discrete(breaks=c("-1","0","1","2","3"), labels=c("Modeled", "Expected", "Observed", "Observed", "Observed"), guide = guide_axis(angle = -45))
+# 
+# #save
+# grid.arrange(mc1_output_even, mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
+# g <- arrangeGrob(mc1_output_even, mc1_output_skew, mc2_output_even, mc2_output_skew, mc3_output_even, mc3_output_skew,  nrow=3, ncol=2)
+# ggsave(file=here("Output","Figures","mock_internal_calibration.png"),g)
+# 
+# 
+# 

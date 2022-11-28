@@ -1,0 +1,115 @@
+---
+title: "Quantifying Impacts of an Environmental Intervention Using Environmental DNA: Methods Supplement"
+author: 
+- Elizabeth Andruszkiewicz Allan*, 
+- Ryan P. Kelly*, 
+- Erin D'Agnese, 
+- Maya Garber-Yonts,
+- Megan Shaffer,
+- Zachary Gold,
+- Andrew O. Shelton 
+date: '2022'
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+    latex_engine: pdflatex
+    number_sections: no
+    extra_dependencies: ["float"]
+  word_document: default
+header-includes:
+- \usepackage{lineno}
+- \linenumbers
+- \usepackage{setspace}\doublespacing
+- \usepackage{gensymb}
+# bibliography: Metabar_2022.bib
+# csl: ecology.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+```
+
+
+## Field Sampling
+
+### Site selection 
+The five creeks selected had culverts with various degrees of fish passability: the treatment creek's culvert -- suspected impassible -- was removed and replaced during the course of the study; two of the four creeks had culverts allowing fish passibility, and two had culverts blocking fish passage. 
+
+<!-- Erin to write text here -->
+
+The average distance between upstream and downstream sampling within a creek was about 160 m; the largest distance between downstream and upstream sampling was at Barnes Creek, which was approximately 330 m, whereas the shortest distance between sampling was at Squalicum Creek at approximately 66 m. 
+
+Padden Lake is stocked with hatchery fish by the Washington Department of Fish and Wildlife and in the year of sampling was stocked with rainbow trout, kokanee salmon, and cutthroat trout. 
+
+![Location of flow gauges compared to sampling locations for Chuckanut, Padden, and Squalicum Creeks.](../Output/SupplementalFigures/stocking_2021only.png) 
+
+### Flow variability at sites 
+Over the course of the year, flow within each creek varied. USGS flow gauges were located in three of the five creeks, relatively nearby to the sampling locations. The closest gauge to sampling locations was Padden Creek (~1.5 km); the gauge at Chuckanut Creek was ~5.5 km and the gauge at Squalicum Creek was ~7.9 km away (Haversine distance). 
+
+![Location of flow gauges compared to sampling locations for Chuckanut, Padden, and Squalicum Creeks.](../Output/SupplementalFigures/map_gauges.png) 
+
+The flow meters at Squalicum Creek and Chuckanut Creek were offline from November 2021 for the remainder of the sampling period. The highest discharge seen during the course of the study from January to November 2021 occurred in November 2021 at Squalicum Creek. The mean discharge in each creek was: 0.42 m\textsuperscript{3}/s in Padden, 0.29 m\textsuperscript{3}/s in Chuckanut, and 1.14 m\textsuperscript{3}/s in Squalicum Creek. The lowest discharge registered by the flow meters is 0.0028 m\textsuperscript{3}/s, which occurred 8.5%, 1.6%, and 0.78% of the time in Padden, Chuckanut, and Squalicum, respectively. 
+
+Due to the lack of flow meter in Squalicum and Chuckanut Creeks from November 2021 to February 2022, we used historical data from the three flow gauges to calculate the average discharge for each day of the year from about 2015-2021. We then used the value for the day of the year that we sampled in either 2021 or 2022 when the gauges were offline. For consistency, we also did this at Padden Creek despite the gauge there being online for the entire sampling period. 
+
+![Discharge in creeks with USGS gauges. Note that Chuckanut and Squalicum went offline around November 2021. Lines show the value for each day averaged over 2015-2021 (or 2022 in the case of Padden Creek). Blue dots show the time of sampling during the course of this study.](../Output/SupplementalFigures/yearavg_flow_gauges.png)
+
+### Water Sampling
+Water samples were collected using Smith Root's eDNA Backpack [CITE], a portable pumping-and-filtering setup set to filter at 1 L/min at 82.7 kPa (12 psi). For most months, a trident sampler was used to collect all 3 biological replicates at the exact same time, for a total sampling time of about 5 minutes. Otherwise, the three replicates were collected consecutively, for a total sampling time of about 15 minutes. The backpack also monitored pressure and flow rate over the course of sampling. The backpack was set to have a target flow rate of 1 L/min and a max pressure of 12 psi. Downstream sites were always sampled before upstream sites to ensure no potential DNA was introduced into the stream before sampling. In some months, less than 2 L of water was filtered due to clogging (Supplemental Table X).
+
+![Volume filtered (L) for each sample. Note that Squalicum upstream in September 2021 was completely dry and therefore no water was filtered.](../Output/Figures/volume_filtered_by_sample.png) 
+
+## Laboratory Processing 
+
+### DNA Extractions
+We followed a protocol developed by Goldberg [CITE] for extracting DNA off the self-preserving Smith Root filters. Filters were removed from their housing with sterile tweezers and cut in half using sterile razor blades. 
+
+### PCR Amplification 
+PCR reactions included 10 $\mu$L of 5X Platinum ii Buffer, 0.4 $\mu$L of Platinum ii Taq, 1.25 $\mu$L of 8 mM dNTPS, 1.25 $\mu$L of 10 $\mu$M F primer, 1.25 $\mu$L of 10 $\mu$M R primer, 5 $\mu$L of template, and 30.85 $\mu$L of molecular grade water, for a total reaction volume of 50 $\mu$L. Cycling conditions were as follows: 95\degree C for 2 min, 35 cycles of 95\degree C for 30 sec, 60\degree C for 30 sec, 72\degree C for 30 sec, followed by a final extension of 72\degree C for 5 min. 
+
+For indexing, 10 ng of PCR product was used as template in a final volume of 11.25 $\mu$L For samples with concentrations less than 0.88 ng/$\mu$L, 11.25 $\mu$L was added despite being less than 10 ng of amplicon. Each sample received a unique index; Nextera index sets A and B were used in combination to avoid using the same index for more than one sample on a single sequencing run. The PCR reaction included the 11.25 $\mu$L of template, 12.5 $\mu$L of Kapa HiFi MMX (Roche, XX), and 1.25 $\mu$L of indexed primer. Cycling conditions were as follows: 95\degree C for 5 min, 8 cycles of 98\degree C for 20 sec, 56\degree C for 30 sec, 72\degree C for 3 min, and a final extension of 72\degree C for 5 min.
+
+### Species Specific qPCR 
+Each DNA sample was run in triplicate using Gene Expression Mastermix (ThermoFisher, XX), a final concentration of 0.375 $\mu$M F primer, 0.375 $\mu$M R primer, and 0.105 $\mu$M probe, as well as 1X EXO-IPC mix, 1X EXO-IPC DNA, 3.5 $\mu$L of template for a final reaction volume of 12 $\mu$L. The EXO-IPC mix includes the primers and probe for the EXI-IPC DNA, with the probe having a VIC reporter, allowing it to be multiplexed with the *O. clarkii* assay, which has a FAM reporter. 
+
+Thermocycling was as follows: 50\degree C for 2 min, 95\degree C for 10 min, followed by 45 cycles of 95\degree C for 15 sec, 60\degree C for 1 min. The cycle threshold (Ct) value determined for the EXO-IPC assay from the NTC was compared to the Ct value for the EXO-IPC assay in each of the environmental samples. If the Ct value was >0.5 Ct values from the mean Ct for the NTCs, the sample was deemed inhibited and diluted 1:10 and re-assayed until the Ct value fell within the accepted range. After converting Ct values to DNA concentrations using the standard curve (see below), the concentration was multiplied by the dilution factor.
+
+## Bioinformatics Processing
+
+![Dilution factor required to remove inhibition as measured by an internal positive control (IPC) qPCR assay.](../Output/Figuinhibition_dilution_factors.png) 
+
+
+
+
+### Quality Controls
+Positive controls were included on each sequencing run to monitor for cross contamination that might have occurred in the laboratory or due to "tag jumping". With 13 MiSeq runs, we included one sample of kangaroo tissue on each run and then measured how many reads of kangaroo were found in environmental samples and how many reads of non-kangaroo were found in kangaroo samples. 
+
+![Proporiton of annotated reads found in positive controls. Grey colors are the three species of kangaroo used for positive controls and are what should be in each sample. Orange species should not be in the positive controls and indicate low level contamination from environmental samples.](../Output/Figures/check_controls.png)
+
+We can also check to make sure that no reads assigning to kangaroo were in the environmental samples. We processed X environmental samples and only 2 had any reads assinged to kangaroo. 
+
+![Proporiton of annotated reads found in environmental samples with positive control. Grey colors are non-kangaroo reads and therefore and are what should be in each sample. Orange species are kangaroo reads and therefore should not be in the environmental samples and indicate low level contamination from positive controls.](../Output/Figures/check_controls2.png) 
+
+### Annotation 
+We first used a tree-based annotation method (insect package) and then followed up with a BLAST search for all ASVs that were not annotated to species level by insect. 
+
+![Number of reads and ASVs annotated to species level.](../Output/Figures/annotation_stats.png) 
+
+## Correcting metabarcoding data for amplification bias
+Using our six mock communities (three different taxa compositions x two proportions [even and skewed]), we can first check how well the quantitative metabarcoding model corrects for amplification bias. In one case, we consider the even mock communities as the mock community data and the skewed mock communities as unknown. We can then re-create what the model believes to be the original starting proportions of the skewed mock community given the proportions of reads found in the skewed mock communities and the proportion of DNA as compared to the proportion of reads found in the even mock communities. We can also do the same treating the skewed mock communities as known and even mock communities as unknown. 
+
+![Intercalibration of mock communities used to correct environmental samples for amplification bias.](../Output/Figures/mock_internal_calibration.png) 
+We can also check how well the calibration is working by comparing the alpha values by using different subsets of mock community data as true and unknown. 
+
+![Estimated alpha values of salmonid species with different calibrations of the mock communities. Each color represents a different subset of mock community data treated as 'true' to calibrate the remainder of the mock community data.](../Output/Figures/mock_internal_calibration_compare_alphas.png) 
+
+![Compositions of salmonid DNA as determined by metabarcoding before correction for amplification bias. B) Absolute concentrations of salmonid DNA using total DNA derived from cutthroat qPCR results.](../Output/Figures/20221120_proportions_before_qm.png) 
+
+## Correcting DNA concentrations for varying flow in creeks
+
+
+
+![Comparison .](../Output/Figures/uncorrected_vs_corrected_flow.png) 
+

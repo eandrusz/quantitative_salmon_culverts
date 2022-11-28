@@ -65,6 +65,12 @@ cut_data_for_stan %>%
   filter(! str_detect(Sample, "St")) %>% 
   select(c(Sample, dilution, Adj_Vol)) %>% 
   separate(Sample, into=c("time","creek","station","biol")) %>% 
+  mutate(creek = case_when(creek == "1Prt" ~ "Portage",
+                           creek == "2Brn" ~ "Barnes",
+                           creek == "3Chk" ~ "Chuckanut",
+                           creek == "4Pad" ~ "Padden",
+                           creek == "5Sqm" ~ "Squalicum",
+                           TRUE ~ creek)) %>% 
   filter(station != "Up5") %>% 
   mutate(station = case_when(station == "Up11" ~ "Up",
                              TRUE ~ station)) %>% 

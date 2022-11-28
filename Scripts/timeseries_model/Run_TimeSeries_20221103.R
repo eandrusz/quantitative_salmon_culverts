@@ -10,7 +10,10 @@ library(shinystan)
 
 #salmonids_abs_abundance_bio_posterior_rpk20221017
 
-d <-readRDS(here("Output/salmonids_abs_abundance_bio_posterior_3spp.RDS")) %>% 
+d <- #readRDS(here("Output","salmonids_abs_abundance_flowcorrected.RDS")) %>% 
+  #readRDS(here("Output/salmonids_abs_abundance_bio_posterior_3spp.RDS")) %>% 
+  #readRDS(here("Output","salmonids_abs_abundance_notflowcorrected_greater1percent.RDS")) %>% 
+  readRDS(here("Output","20221122_abundance_flowcorrected.RDS")) %>% 
   # filter(creek != "4Pad5") %>%  #omit upstream of Padden 5, for symmetry w other creeks
   filter(creek != "Barnes") %>%   #omit Barnes because we have few datapoints for that creek in terms of abs concentration
   #filter(species != "Oncorhynchus tshawytscha") %>%  #for now, filter out as rare
@@ -80,7 +83,8 @@ stan_data <- list(
   species_idx = f$species_idx,
   construction_idx = f$construction_idx,
   # construction_indicator = f$construction_idx-1,
-  y_logeDNA = log(f$meandnaconc),
+  #y_logeDNA = log(f$meandnaconc),
+  y_logeDNA = log(f$meandnaconcflow),
   N_unobserved = nrow(missing),
   unobserved_time_idx= as.array(missing$time_idx),
   unobserved_creek_idx= as.array(missing$creek_idx),
@@ -110,7 +114,7 @@ stanMod = stan(file = here("Scripts/timeseries_model/timeSeries_20221029.stan") 
 # plot(stanMod, par = c("mu"))
 # plot(stanMod, par = c("sigma_eta", "sigma_dna"))
 # #plot(stanMod, par = c("eta"))
-#plot(stanMod, par = c("delta"))
+# plot(stanMod, par = c("delta"))
 # rstan::traceplot(stanMod, par = c("beta_1"))
 # plot(stanMod, par = c("alpha"))
 # plot(stanMod, par = c("gamma"))
@@ -133,7 +137,7 @@ summary(stanMod)$summary[,"Rhat"] %>% sort() %>% tail()
 # Save, if desired
 # saveRDS(list(stan_data,
 #              stanMod,
-#              f), file = here("Scripts/timeseries_model/modelFit_20221111.RDS"))
+#              f), file = here("Scripts/timeseries_model/20221122_modelFit_flowcorrected.RDS"))
 
 
 

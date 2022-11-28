@@ -26,10 +26,10 @@ library(gtools)
 
 # Ryan's latest
 
-bayes_out <- readRDS(here("Output/metabarcoding/bayes_out_3spp.RDS"))
+#bayes_out <- readRDS(here("Output/metabarcoding/bayes_out.RDS"))
 
 # My latest
-# bayes_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/bayes_out_salmonidonly.RDS")
+bayes_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/bayes_out_3spp.RDS")
 
 grabthese <- grep("int_samp_small", names(bayes_out$Bayes_modelfit@sim$samples[[1]]))
 postSamples <- bayes_out$Bayes_modelfit@sim$samples[[1]][grabthese]
@@ -56,8 +56,8 @@ b$species <- rep(colnames(bayes_out$Bayes_estimates),
 
 ## Pull posteriors for qPCR data for cutthroat 
 
-# qMod_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
-qMod_out <- readRDS(here("Output","qpcr","cut_qMod_out.RDS"))
+qMod_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
+# qMod_out <- readRDS(here("Output","qpcr","cut_qMod_out.RDS"))
 
 cut_names <- readRDS(here("Output","qpcr","cut_modeled_conc.RDS")) %>%
   mutate(creek = case_when(creek == "4Pad" & station == "Dn" ~ "4Pad11",
@@ -74,21 +74,6 @@ cut_names <- readRDS(here("Output","qpcr","cut_modeled_conc.RDS")) %>%
   unite(Sample, c("time","creek","station","biorep"), sep="_") %>% 
   dplyr::select(c(Sample,dilution,Adj_Vol))
 
-# coho_names <- readRDS(here("Output","qpcr","coho_modeled_conc.RDS")) %>%
-#   mutate(creek = case_when(creek == "4Pad" & station == "Dn" ~ "4Pad11",
-#                            creek == "4Pad" & station == "Up11" ~ "4Pad11",
-#                            TRUE ~ creek)) %>% 
-#   mutate(creek = case_when(creek == "4Pad" & station == "Up5" ~ "4Pad5",
-#                            TRUE ~ creek)) %>% 
-#   mutate(station = case_when(creek == "4Pad11" & station == "Up11" ~ "Up",
-#                              TRUE ~ station)) %>% 
-#   mutate(station = case_when(creek == "4Pad5" & station == "Up5" ~ "Up",
-#                              TRUE ~ station)) %>% 
-#   mutate(station = case_when(station == "Dn" ~ 1,
-#                              station == "Up" ~ 2)) %>%
-#   unite(Sample, c("time","creek","station","biorep"), sep="_") %>% 
-#   dplyr::select(c(Sample,dilution,Adj_Vol))
-
 qgrabthese <- grep("envir_concentration", names(qMod_out$qMod@sim$samples[[1]]))
 qpostSamples <- qMod_out$qMod@sim$samples[[1]][qgrabthese]
 
@@ -96,42 +81,25 @@ qa <- as.data.frame(qpostSamples)
 qb <- t(qa) %>% 
   as_tibble() %>% 
   add_column(cut_names) %>% 
-  #add_column(coho_names) %>% 
   group_by(Sample, dilution, Adj_Vol) %>% 
   nest() %>% 
   rename(cutqpcr = data) %>% 
   rename(bottle = Sample) 
 
-#test <- b[-151,]
-# something is wrong with row 151?
-  
 mergedb <- b %>% 
-  #test %>% 
   left_join(qb, by="bottle") %>% 
-  #filter(species == "Oncorhynchus clarkii") %>% 
-  #filter(species == "Oncorhynchus kisutch") %>% 
+  filter(species == "Oncorhynchus clarkii") %>% 
   drop_na() %>% 
   #replace_na(list(cutqpcr = list(-0.30103), dilution=1, Adj_Vol = 2)) %>% ## back calculate -0.30103 to get final of 50 copies / L water for samples where there are reads but no qpcr data 
   mutate(cut_dnacopy_uL = map2(.x = cutqpcr, .y = dilution, .f = function(x, y) y*(10^x))) %>% 
-  #mutate(cut_dnacopy_uL = map2(.x = cutqpcr, .y = dilution, .f = function(x, y) y*x)) %>% 
   mutate(cut_dnacopy_L = map2(.x = cut_dnacopy_uL, .y = Adj_Vol, .f = function(x,y) x*(200/y))) %>% 
   ungroup()
-
-# b %>% 
-#   filter(bottle == "0321_1Prt_2_1") %>% 
-#   summarise(mean(unlist(data)))
-  
-
-# mergedb <- mergedb %>% 
-#   mutate(total_dnacopy_L = pmap(.x = cut_dnacopy_L, .y = data, f = .x /.y))  
-  
 
 mergedb <- mergedb %>%
   group_by(bottle, species) %>% 
   mutate(meanpropreads = mean(unlist(data))) %>%
   mutate(meancutqpcr = mean(unlist(cut_dnacopy_uL))) %>% 
   mutate(meancutdna = mean(unlist(cut_dnacopy_L))) %>% 
-  #mutate(meanttotdna = mean(unlist(total_dnacopy_L))) %>% 
   separate(bottle, into=c("time","creek","station", "bio"), remove=FALSE)
 
 
@@ -173,32 +141,38 @@ quants_to_plot <- mergedc %>%
                            creek == "5Sqm" ~ "Squalicum",
                            TRUE ~ creek))  
 
-ggplot(quants_to_plot, aes(x=newtime, y=log10(meandnaconc), color=species)) +
-  geom_point() +
-  facet_grid(~creek ~station ~species) +
-  # scale_color_manual(values = pal_okabe_ito) +
-  guides(color= 'none') + 
-  labs(x="Date (YY-MM)", y= "Log10 copies/L water") + 
-  theme_bw() + 
-  scale_x_discrete(guide = guide_axis(angle = -45))
-
-# ggsave(here("Output","Figures","quant_ts_after_qm_EArun20221020.png"), units="in", width=12, height=8)
-
-ggplot(quants_to_plot, aes(x=newtime, y=log10(meantotdna))) +
-  geom_point() +
-  facet_grid(~creek ~station) +
-  labs(x="Date (YY-MM)", y= "Log10 copies total salmonid DNA/L water") + 
-  theme_bw() + 
-  scale_x_discrete(guide = guide_axis(angle = -45))
-
-# ggsave(here("Output","Figures","totaldna_ts_after_qm.png"))
+# ggplot(quants_to_plot, aes(x=newtime, y=log10(meandnaconc), color=species)) +
+#   geom_point() +
+#   facet_grid(~creek ~station ~species) +
+#   # scale_color_manual(values = pal_okabe_ito) +
+#   guides(color= 'none') + 
+#   labs(x="Date (YY-MM)", y= "Log10 copies/L water") + 
+#   theme_bw() + 
+#   scale_x_discrete(guide = guide_axis(angle = -45))
+# 
+# # ggsave(here("Output","Figures","quant_ts_after_qm_EArun20221020.png"), units="in", width=12, height=8)
+# 
+# ggplot(quants_to_plot, aes(x=newtime, y=log10(meantotdna))) +
+#   geom_point() +
+#   facet_grid(~creek ~station) +
+#   labs(x="Date (YY-MM)", y= "Log10 copies total salmonid DNA/L water") + 
+#   theme_bw() + 
+#   scale_x_discrete(guide = guide_axis(angle = -45))
+# 
+# # ggsave(here("Output","Figures","totaldna_ts_after_qm.png"))
 
 
 simple <- quants_to_plot %>% 
   select(c(bottle, newtime, creek, station, bio, species, meanpropreads, meancutdna, meantotdna, meandnaconc))
 
-# write_rds(simple, here("Output","salmonids_abs_abundance_bio_posterior_3spp.RDS"))
+# write_rds(simple, here("Output","salmonids_abs_abundance_notflowcorrected.RDS"))
 
+
+## filter out <1% reads and BLOQ 
+more1percent <- simple %>% 
+  filter(meanpropreads > 0.01)
+
+# write_rds(simple, here("Output","salmonids_abs_abundance_notflowcorrected_greater1percent.RDS"))
 
 
 
