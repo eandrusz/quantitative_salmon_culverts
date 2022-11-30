@@ -1,0 +1,351 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newlength{\cslentryspacingunit} % times entry-spacing
+\setlength{\cslentryspacingunit}{\parskip}
+\newenvironment{CSLReferences}[2] % #1 hanging-ident, #2 entry spacing
+ {% don't indent paragraphs
+  \setlength{\parindent}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+  \let\oldpar\par
+  \def\par{\hangindent=\cslhangindent\oldpar}
+  \fi
+  % set entry spacing
+  \setlength{\parskip}{#2\cslentryspacingunit}
+ }%
+ {}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+\usepackage{lineno}
+\linenumbers
+\usepackage{setspace}\doublespacing
+\usepackage{gensymb}
+\usepackage{float}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Quantifying Impacts of an Environmental Intervention Using Environmental DNA: Supplemental Text 2},
+  pdfauthor={Elizabeth Andruszkiewicz Allan,; Ryan P. Kelly,; Erin D'Agnese,; Maya Garber-Yonts,; Megan Shaffer,; Zachary Gold,; Andrew O. Shelton},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Quantifying Impacts of an Environmental Intervention Using
+Environmental DNA: Supplemental Text 2}
+\author{Elizabeth Andruszkiewicz Allan, \and Ryan P. Kelly, \and Erin
+D'Agnese, \and Maya Garber-Yonts, \and Megan Shaffer, \and Zachary
+Gold, \and Andrew O. Shelton}
+\date{2022}
+
+\begin{document}
+\maketitle
+
+Our analysis depends upon a set of quantitative models, each linking our
+observations of metabarcoding reads or qPCR cycle-threshold values to an
+underlying concentration of target-species DNA in water samples.
+
+In summary, we (1) use a mock community with a known composition to
+calibrate our environmental metabarcoding data as described in Shelton
+et al.~2022. The result is a set of estimated proportions of DNA from
+each species in each sample. We then (2) relate qPCR cycle-threshold
+values for a reference species (here, \emph{O. clarkii}) from the same
+set of samples to a standard curve to yield quantitative estimates of
+the concentration of our reference species in each sample. We (3) use
+these absolute estimates of DNA concentration to expand the
+metabarcoding-derived proportion data into a complete set of
+quantitative estimates of DNA concentrations for each species in each
+sample. Finally, we (4) construct a time-series model for these
+species-specific concentrations, sharing information across creeks and
+time-points. This allows us to interpolate unobserved data points and
+more important, to compare our observations to the (counterfactual)
+expecations for species' DNA concentrations in the absence of a
+construction project. We detail the statistical details of these steps
+below.
+
+\hypertarget{calibration-with-a-mock-community}{%
+\subsection{Calibration with a Mock
+Community}\label{calibration-with-a-mock-community}}
+
+See Shelton et al.~2022; McLaren et al; Silverman et al
+
+\hypertarget{qpcr-calibration}{%
+\subsection{qPCR Calibration}\label{qpcr-calibration}}
+
+See (Shelton et al. 2019) and (McCall et al. 2014) for similar analyses.
+
+For all samples \(i\), on qPCR plates \(j\), we either observe
+(\(z_{i,j} = 0\) or do not observe \(z_{i,j} = 1\)) amplification; we
+omit the subscripts \(i\) and \(j\) from the following description
+except where necessary for clarity. We assume an intercept of zero.
+
+We model the probability of detection \(P(z = 1)\)) as a linear function
+of concentration and slope parameter \(\phi\),
+(\(P(z = 1) = \theta = c\phi\)), with a logit transform to constrain the
+inferred probability to between 0 and 1.
+
+For those samples that amplify (\(z = 1\)), we model the observed Ct
+value (\(y\)) as a linear function of our parameter of interest, the
+log-concentration of target-species DNA under analysis (\(c\)). We treat
+\(y\) as drawn from a normal distribution
+\(y \sim N(\mu_{i,j}, \sigma_{i,j})\)), where each triplicate sample on
+each qPCR plate has its own estimated mean and standard deviation. The
+means are estimated as a straightforward linear model,
+\(mu = \beta_{0,j} + \beta_{1,j}c\), but we allow the standard deviation
+to vary as a linear function of log-concentration so as to accurately
+capture decreasing precision with decreasing concentration:
+\(\sigma = e^{\gamma_{0} + \gamma_{1,j}c}\); we estimate these
+parameters as an exponent to constrain \(\sigma > 0\).
+
+Samples with known concentrations (i.e., standards) were fit jointly
+with unknown samples (i.e., environmental samples); because qPCR plate
+identity was shared among all environmental samples and standards within
+a plate, this has the effect of applying plate-specific slope and
+intercept values for the standard curve to each of the environmental
+samples on the plate.
+
+We apply moderately informative priors that make use of background
+information in hand. For example, because qPCR standard curves of all
+kinds have slopes near -3, this slope becomes our background expectation
+as embodied in the prior on \(\beta_1\), but the standard deviation of
+that prior leaves plenty of room for this background to be overwhelmed
+by the observed data. The same logic applies to the intercept of the
+standard curve, which in qPCR (for any given species) generally falls
+near 39 cycles, an expectation that we formalize by having \(\beta_0\)
+drawn from a normal distribution with \(\mu = 39\) and \(\sigma = 3\).
+
+Taken together with priors, the model is:
+
+\begin{gather*}
+z_{i,j} \sim bernoulli(\theta_{i,j}) \\
+\theta_{i,j} = logit^{-1}(\phi*c_{i,j}) \\[4mm]
+y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{    if } z_{i,j} = 1 \\
+\mu_{i,j} = \beta_{0,j} + \beta_{1,j} * c_{i,j} \\
+\sigma_{i,j} = e^{\gamma_{0}  + \gamma_{1,j}*c_{i,j}} \\[4mm]
+\beta_{0} \sim normal(39, 3) \\
+\beta_{1} \sim normal(-3, 1) \\
+\gamma_{1} \sim normal(0,5) \\
+\gamma_{0} \sim normal(-2,1)
+\end{gather*}
+
+Model Diagnostics: 3 chains, 2500 iterations, for all parameters,
+\(\hat{R} \leq 1.002\).
+
+\hypertarget{expanding-proportions-into-absolute-abundances}{%
+\subsection{Expanding Proportions into Absolute
+Abundances}\label{expanding-proportions-into-absolute-abundances}}
+
+As described in the main text, calibrated metabarcoding analysis yielded
+quantitative estimates of the proportions of species' DNA in
+environmental samples prior to PCR.
+
+We then converted these proportions into absolute abundances by
+expansion, in light of the qPCR results for our reference species
+\emph{O. clarkii}. We estimated the total amplifiable salmonid DNA in
+environmental sample \(i\) as
+\(DNA_{salmonid_{i}} = \frac{[qPCR_{reference_{i}}]}{Proportion_{reference_{i}}}\),
+and then expanded species' proportions into absolute concentrations by
+multiplying these sample-specific total concentrations by individual
+species' proportions, such that for species \(j\) in sample \(i\),
+\(DNA_{i,j} = DNA_{salmonid_{i}} * Proportion_{i,j}\).
+
+See Pont et al.~2022; McClaren 2022 pre-print
+
+\hypertarget{time-series-model}{%
+\subsection{Time-Series Model}\label{time-series-model}}
+
+At a given station in a given creek, there is some distribution of DNA
+concentration for a species. For simplicity, we focus on a single
+species and a single station (downstream or upstream) for the moment.
+
+The (log) DNA concentration in creek \(i\) at time \(t\) is distributed
+as \(Y_{i,t} \sim \mathcal{N}(\mu_{i,t},\,\sigma^{2})\). We may choose
+to let \(\sigma\) vary across creeks, time points, or with a covariate
+such as creek flow.
+
+We are interested in how the DNA concentration changes over time, so we
+assert that the expected value of DNA in a creek at time \(t\),
+\(\mu_{i,t}\), depends upon its value in the previous time step \(t-1\),
+in some way. Further, we can let \(\mu_{i,t}\) in, say, our focal Padden
+creek, depend upon the observations in other creeks (i.e., where creek
+\(i \neq \text{Padden}\)) if we think that similar environmental and
+demographic forces are affecting all creeks in similar ways. We can use
+these inferences to model data we cannot observe directly -- namely, a
+counterfactual scenario in which a human intervention did not occur --
+to estimate the effect of that intervention.
+
+We use a simple, first-order autoregressive (AR(1)) model with
+\(\mu_{i,t}\) as a linear function of \(\mu_{i,t-1}\) with slope
+\(\beta\) and intercept \(\alpha\). Here, \(\beta\) reflects the degree
+of autocorrelation between time steps \(t\) and \(t-1\); a stationary
+model requires \(|\beta| \leq 1\). \(\alpha\) estimates the shift in the
+mean, after accounting for autocorrelation, at a given creek and
+timepoint.
+
+To share information across creeks, we can assert a constant \(\beta\)
+for all creeks within a timepoint -- that is, the abundance of each
+species' DNA at a given timepoint is similarly dependent upon its
+abundance at the prior timepoint. Our model would then look like this:
+
+\begin{align*}
+Y_{i,t} \sim \mathcal{N}(\mu_{i,t},\,\sigma^{2}) \\
+\mu_{i,t} = \alpha_{i,t} + \beta_{t}\mu_{i,t-1} 
+\end{align*}
+
+where the slope term, \(\beta\), is shared across creeks for a given
+time point.
+
+We can add observations from many species and from the two stations per
+creek -- upstream and downstream of the culvert -- simply by adding
+subscripts to the model. If we let \(d\) be a subscript indicating
+station (\(d = 1 \text{ if downstream, } d = 2 \text{ if upstream}\)),
+and let \(j\) be a subscript indicating species across the same set of
+samples, we have a single overall model of the change in eDNA
+concentration among species, creeks, timepoints, and stations.
+
+We then add a term, \(\gamma\), to explicitly estimate the effect of
+culvert removal. We index \(\gamma\) with an index \(r\) reflecting the
+state of a creek as either being in its undisturbed state (\(r = 1\)) or
+else subject to restoration (\(r = 2\); only Padden Creek has this
+designation, and only after October 2021). We estimate \(\gamma\) for
+each species \(j\) and each timepoint \(t\).
+
+Finally, we add a term, \(\eta\), to capture the additional variation in
+DNA concentration not otherwise explained by the autocorrelation element
+of the model. Differences between \(\eta\) for upstream and downstream
+stations within a set of time/creek/species observations reflect a
+combination of differences due to the culvert itself and random process
+variation.
+
+We complete the model by specifying the prior distributions from which
+each parameter is drawn, selecting weakly informative priors for each
+parameter.
+
+\begin{align*}
+ Y_{i,t,d,j} &\sim \mathcal{N}(\mu_{i,t,d,j},\,\sigma^{2})\\
+\mu_{i,t,d,j} &= \alpha_{i,t,j} + \beta_{j}\mu_{i,t-1,d,j} + \gamma_{t,j,r} + \eta_{i,t,d,j} \\
+\alpha_{i,j,t} &\sim \mathcal{N}(\mu_{\alpha_j}, \sigma_{\alpha})\\
+\beta &\sim \mathcal{N}(0, 5) \\
+\gamma &\sim \mathcal{N}(0, 5) \\
+\sigma &\sim gamma(1,1) \\
+\eta &\sim \mathcal{N}(0, \sigma_{\eta}) \\
+\sigma_{\eta} &\sim gamma(1,1) \\
+\bf{\mu_{\alpha}} &\sim \mathcal{N}(0, 5)
+\end{align*}
+
+To reflect (in part) the hierarchical structure of our data, we let our
+intercept terms, \(\alpha\) be drawn from species-specific
+distributions, where each species has a different mean, but all species
+share a common variance.
+
+The \(\eta\) terms are all drawn from a common distribution,
+representing variation among triplicate biological observations at a
+creek/time/station.
+
+Note that the time-series model treats DNA concentrations at time zero,
+\(\mu_0\), as a parameter to be estimated freely from the observed data;
+all subsequent concentrations are a function of the concentration at the
+previous timestep. Accordingly, we assign a weakly informative prior on
+\(\mu_0\) as well, \(\mu_0 \sim \mathcal{N}(0, 5)\). This prior reflects
+the prior belief that the DNA concentration for each species is between
+\(4.5*10^-5\) and \(2.2*10^4\) copies/L with 95\% probability.
+
+The \(\eta\) term gives us a way of estimating the effects of the
+culverts themselves on each species, after subtracting out the effects
+of autocorrelation, and other modeled parameters. The difference between
+upstream and downstream values of \(eta\) for a given species/creek/time
+yields our estimate of this effect.
+
+This model shares enough information across time points (within a creek)
+and across creeks (within a time point) that we can use it to infer DNA
+concentrations that we do not actually observe -- we treat the
+temporal/spatial points to be inferred as missing data, parameters to be
+estimated by the larger model.
+
+{[}insert example figure{]}
+
+Model Diagnostics: 3 chains, 2500 iterations, for all parameters,
+
+\hypertarget{references}{%
+\subsection*{References}\label{references}}
+\addcontentsline{toc}{subsection}{References}
+
+\hypertarget{refs}{}
+\begin{CSLReferences}{1}{0}
+\leavevmode\vadjust pre{\hypertarget{ref-mccall2014}{}}%
+McCall, Matthew N., Helene R. McMurray, Hartmut Land, and Anthony
+Almudevar. 2014. {``On Non-Detects in qPCR Data.''}
+\emph{Bioinformatics} 30 (16): 2310--16.
+\url{https://doi.org/10.1093/bioinformatics/btu239}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-shelton2019}{}}%
+Shelton, Andrew Olaf, Ryan P. Kelly, James L. O'Donnell, Linda Park,
+Piper Schwenke, Correigh Greene, Richard A. Henderson, and Eric M.
+Beamer. 2019. {``Environmental DNA Provides Quantitative Estimates of a
+Threatened Salmon Species.''} \emph{Biological Conservation} 237
+(September): 383--91.
+\url{https://doi.org/10.1016/j.biocon.2019.07.003}.
+
+\end{CSLReferences}
+
+\end{document}
