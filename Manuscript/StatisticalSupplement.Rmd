@@ -1,8 +1,29 @@
 ---
-title: "Statistical Supplement -- Salmon Culverts"
-author: "NGN Team"
-date: "2022-10-11"
-output: pdf_document
+title: "Quantifying Impacts of an Environmental Intervention Using Environmental DNA: Supplemental Text 2"
+author: 
+- Elizabeth Andruszkiewicz Allan, 
+- Ryan P. Kelly, 
+- Erin D'Agnese, 
+- Maya Garber-Yonts,
+- Megan Shaffer,
+- Zachary Gold,
+- Andrew O. Shelton 
+date: '2022'
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+    latex_engine: pdflatex
+    number_sections: no
+    extra_dependencies: ["float"]
+  word_document: default
+header-includes:
+- \usepackage{lineno}
+- \linenumbers
+- \usepackage{setspace}\doublespacing
+- \usepackage{gensymb}
+bibliography: references.bib
+csl: ecological-applications.csl
 ---
 
 ```{r setup, include=FALSE}
@@ -23,15 +44,15 @@ In summary, we (1) use a mock community with a known composition to calibrate ou
 
 ## Calibration with a Mock Community
 
-See Shelton et al. 2022; McLaren et al; Silverman et al
+See [@shelton; @mclaren2019; @silverman2021].
 
-For ease of computation, we ran the metabarcoding-calibration model on data for each of our five creeks separately, using the same mock communities to calibratte each.
+For ease of computation, we ran the metabarcoding-calibration model on data for each of our five creeks separately, using the same mock communities to calibrate each.
 
 Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.02$
 
 ## qPCR Calibration
 
-See Shelton et al. 2019; McCall et al. 2014 (<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4133581/>)
+See [@shelton2019a; @mccall2014].
 
 For all samples $i$, on qPCR plates $j$, we either observe ($z_{i,j} = 0$ or do not observe $z_{i,j} = 1$) amplification; we omit the subscripts $i$ and $j$ from the following description except where necessary for clarity. We assume an intercept of zero.
 
@@ -58,7 +79,7 @@ y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{    if } z_{i,j} = 1 \\
 \gamma_{0} \sim normal(-2,1)
 \end{gather*}
 ```
-![FIGSX_qPCR_calibration: Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/Figures/qPCR_calibration_supplemental.png)
+![FIGSX_qPCR_calibration: Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/SupplementalFigures/qPCR_calibration_supplemental.png)
 
 Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.002$.
 
