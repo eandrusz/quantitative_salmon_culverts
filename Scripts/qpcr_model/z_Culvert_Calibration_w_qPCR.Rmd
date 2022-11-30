@@ -318,13 +318,14 @@ for(i in 1:length(pp_beta0)){y[i] <- rnorm(1, mean = mu[i], sd = sigma[i])}
   ggplot(aes(x = conc, y = y)) +
     geom_point(alpha = .1) +
     xlab("Log10 DNA Concentration") +
-    ylab("Ct value"))
+    ylab("Ct value")) +
+    theme_bw()
     #ggtitle(paste("Plate ", PLATE)))
 
 (p1 <- plotstd +
-    geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 1), aes(x = log10(conc), y = Ct), color = "red"))
+    geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 1), aes(x = log10(conc), y = Ct), color = "red")) 
     #geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 0), aes(x = log10(conc), y = 20), color = "blue") +
-ggsave(p1, file = here("Output/Figures/qPCR_calibration_supplemental.png"))    
+ggsave(p1, file = here("Output/SupplementalFigures/qPCR_calibration_supplemental.png"))    
 
 
 

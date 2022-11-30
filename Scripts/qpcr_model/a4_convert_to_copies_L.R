@@ -50,6 +50,8 @@ for (i in 1:n_cut) {
   cutcleandata[[i]] <- input_qPCR_data(cut_files, qPCRmeta, plate_num)
 }
 cut_data_for_stan <- do.call(rbind, cutcleandata)  
+cut_data_for_stan <- cut_data_for_stan %>% 
+  select(-DateStamp)
 
 check <- cut_data_for_stan %>% 
   separate(Sample, into=c("time","creek","stn","bio")) %>% 
@@ -61,52 +63,20 @@ check2 <- check %>%
 
 # write.csv(cut_data_for_stan, here("Output","qpcr","cut_data_for_stan.csv"), row.names=FALSE)
 
-
-## coho
-# cohocleandata <- list()
-# for (i in 1:n_coho) {
-#   plate_num <- i
-#   cohocleandata[[i]] <- input_qPCR_data(coho_files, qPCRmeta, plate_num)
-# }
-# coho_data_for_stan <- do.call(rbind, cohocleandata)  
-# 
-# check <- coho_data_for_stan %>% 
-#   separate(Sample, into=c("time","creek","stn","bio")) %>% 
-#   unite(creekstnbio, c(creek,stn,bio)) 
-# 
-# check2 <- check %>% 
-#   group_by(creekstnbio) %>% 
-#   summarize(n=n())
-
-# write.csv(coho_data_for_stan, here("Output","qpcr","coho_data_for_stan.csv"), row.names=FALSE)
-
-
 ####################################################################
-# Run Stan model for cutthroat and coho 
+# Run Stan model for cutthroat 
 ####################################################################
 
 #cut_data_for_stan <- read_csv(here("Output","qpcr","cut_data_for_stan.csv"))
-#coho_data_for_stan <- read_csv(here("Output","qpcr","coho_data_for_stan.csv"))
 
-
-### RUN MODEL FOR CUTTHROAT 
 cut_qMod_out <- run_qPCR_model(here("Output","qpcr","cut_data_for_stan.csv"),
-                               here("Scripts", "functions", "qPCR_calibration_enchilada.stan"),
-                              )
-#write_rds(cut_qMod_out, "/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
+                               here("Scripts", "functions", "qPCR_calibration_enchilada.stan"))
+
+#write_rds(cut_qMod_out, "/Users/elizabethandruszkiewicz/Desktop/20221129_model_output/cut_qMod_out.RDS")
 cut_modeled_conc <- cut_qMod_out$results_qPCR
-write_rds(cut_modeled_conc, here("Output","qpcr","cut_modeled_conc.RDS"))
+write_rds(cut_modeled_conc, here("Output","qpcr","20221129_cut_modeled_conc.RDS"))
 #save model output
-write_rds(cut_qMod_out, here("Output","qpcr","cut_qPCR_modelFit.RDS"))
-
-
-### RUN MODEL FOR COHO 
-# coho_qMod_out <- run_qPCR_model(here("Output","qpcr","coho_data_for_stan.csv"),
-#                                 here("Scripts", "functions", "qPCR_calibration_enchilada.stan"))
-# # write_rds(coho_qMod_out, "/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/coho_qMod_out.RDS")
-# coho_modeled_conc <- coho_qMod_out$results_qPCR
-# write_rds(coho_modeled_conc, here("Output","qpcr","coho_modeled_conc.RDS"))
-
+write_rds(cut_qMod_out, here("Output","qpcr","20221129_cut_qPCR_modelFit.RDS"))
 
 ####################################################################
 # Check output to make sure it looks reasonable  

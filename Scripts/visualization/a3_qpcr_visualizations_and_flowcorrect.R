@@ -22,8 +22,6 @@ library(here)
 library(tidyverse)
 
 cut_data_for_stan <- read_csv(here("Output","qpcr","cut_data_for_stan.csv"))
-#coho_data_for_stan <- read_csv(here("Output","qpcr","coho_data_for_stan.csv"))
-
 cut_modeled_conc <- readRDS(here("Output","qpcr","cut_modeled_conc.RDS"))
 monthlyflow <- read.csv(here("Output","qpcr","monthly_flow.csv"))
 closestflow <- read.csv(here("Output","qpcr","closest_flow.csv"))
@@ -62,7 +60,8 @@ intercepts <- cutplot %>%
 # qPCR: example of stan model output standard curve
 ####################################################################
 
-
+# qMod <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221129_model_output/cut_qMod_out.RDS")
+# 
 # PLATE = 2
 # pp_beta0 <- extract(qMod, "beta_std_curve_0")$beta_std_curve_0[,PLATE]
 # pp_beta1 <- extract(qMod, "beta_std_curve_1")$beta_std_curve_1[,PLATE]
@@ -76,7 +75,7 @@ intercepts <- cutplot %>%
 # y<-NA
 # for(i in 1:length(pp_beta0)){y[i] <- rnorm(1, mean = mu[i], sd = sigma[i])}
 # 
-# (plotstd <- data.frame(y, conc) %>% 
+# (plotstd <- data.frame(y, conc) %>%
 #     ggplot(aes(x = conc, y = y)) +
 #     geom_point(alpha = .1) +
 #     ggtitle(paste("Plate ", PLATE)))
@@ -84,7 +83,8 @@ intercepts <- cutplot %>%
 # (p1 <- plotstd +
 #     geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 1), aes(x = log10(conc), y = Ct), color = "red"))
 # #geom_point(data = qPCRdata %>% filter(Plate == PLATE & z == 0), aes(x = log10(conc), y = 20), color = "blue") +
-# 
+
+# ggsave(p1, file = here("Output/SupplementalFigures/qPCR_calibration_supplemental.png"))    
 
 ####################################################################
 # qPCR: cutthroat modeled concentration 
@@ -133,7 +133,7 @@ cut_modeled_conc %>%
                            TRUE ~ creek)) %>% 
   mutate(station = case_when(station == "Dn" ~ "Down",
                              TRUE ~ station)) %>% 
-  mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum')))%>% 
+  mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum', 'Barnes')))%>% 
   ggplot(aes(x = newtime, y = log10(mean_concentration_est), color=station)) +
   geom_point() +
   geom_segment(aes(x = newtime, xend = newtime, y = log10(ci25_concentration_est), yend = log10(ci75_concentration_est))) +
@@ -143,7 +143,7 @@ cut_modeled_conc %>%
   scale_x_discrete(guide = guide_axis(angle = -45)) +
   scale_color_manual(values=c("darkgrey", "black"))
 
-#ggsave(here("Output","Figures", "20221123_modeled_cut_qpcr_updown.png"))
+#ggsave(here("Output","Figures", "20221129_modeled_cut_qpcr_updown.png"))
 
 
 # ####################################################################

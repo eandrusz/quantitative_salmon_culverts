@@ -32,7 +32,7 @@ bayes_out_pad <- readRDS(here("Output","metabarcoding","bayes_out_4salmonids_4Pa
 bayes_out_sqm <- readRDS(here("Output","metabarcoding","bayes_out_4salmonids_5Sqm.RDS"))
 
 ## Pull posteriors of Bayesian model for qPCR
-qMod_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221019-ngn-model-output/cut_qMod_out.RDS")
+qMod_out <- readRDS("/Users/elizabethandruszkiewicz/Desktop/20221129_model_output/cut_qMod_out.RDS")
 cut_names <- readRDS(here("Output","qpcr","cut_modeled_conc.RDS"))
 
 ## Flow data to correct
@@ -191,7 +191,7 @@ ggplot(quants_to_plot, aes(x=newtime, y=log10(meantotdna))) +
 simple <- quants_to_plot %>% 
   select(c(bottle, newtime, creek, station, bio, species, meanpropreads, meancutdna, meantotdna, meandnaconc, meandnaconcflow))
 
-#write_rds(simple, here("Output","20221123_abundance_flowcorrected.RDS"))
+#write_rds(simple, here("Output","20221129_abundance_flowcorrected.RDS"))
 
 
 

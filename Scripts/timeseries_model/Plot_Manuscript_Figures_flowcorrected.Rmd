@@ -12,10 +12,7 @@ library(here)
 library(unikn)
 
 ####
-#read in time series model fit
-#stanMod <- readRDS(here("Scripts/timeseries_model/modelFit_20221111.RDS"))
-#stanMod <- readRDS(here("Scripts","timeseries_model","modelFit_20221118_flowcorrected.RDS"))
-stanMod <- readRDS(here("Scripts","timeseries_model","20221123_modelFit_flowcorrected.RDS"))
+stanMod <- readRDS(here("Scripts","timeseries_model","20221129_modelFit_flowcorrected.RDS"))
 
 
 f <- stanMod[3][[1]]  #data in
@@ -118,7 +115,7 @@ multispeciesTrendsplot <- ggplot() +  #treating meandnaconc as observations
           legend.box.spacing = unit(0, "mm")) + 
     scale_x_discrete(guide = guide_axis(angle = -45))  
     
-   # ggsave(multispeciesTrendsplot, file = here("Output/Figures/20221123_multispeciesTrends_flowcorrected.png"), width=9, height=7)
+   # ggsave(multispeciesTrendsplot, file = here("Output/Figures/20221129_multispeciesTrends_flowcorrected.png"), width=9, height=7)
 
 ```
 
@@ -232,7 +229,7 @@ colorPal <- newpal(col = o_i_colors,
   left_join(tibble(species_idx = 1:Nspp, jitter = (1:Nspp - median(1:Nspp))*0.07)) %>% 
   left_join(f %>% dplyr::select(species_idx, species) %>% distinct()) %>% 
   mutate(jitter_time = time_idx + (jitter)) %>% 
-  left_join(resOut %>% filter(creek_idx == 3, station_idx == 1) %>% dplyr::select(time_idx, species_idx, mean_est)) %>% distinct() %>% 
+  left_join(resOut %>% filter(creek_idx == 2, station_idx == 1) %>% dplyr::select(time_idx, species_idx, mean_est)) %>% distinct() %>% 
   mutate(gamma_mean_pct = gamma_mean/(mean_est-gamma_mean)*100,
          gamma_025_pct = gamma_025/(mean_est-gamma_mean)*100,
          gamma_975_pct = gamma_975/(mean_est-gamma_mean)*100) %>% 
@@ -241,13 +238,13 @@ colorPal <- newpal(col = o_i_colors,
   geom_hline(yintercept=0, color="grey") +
   geom_segment(aes(x = jitter_time, xend = jitter_time, y = gamma_025_pct, yend = gamma_975_pct)) +
   scale_x_continuous(breaks = c(7:12),
-                     labels = c("21-09","21-10","21-11","21-12","22-01","22-02")) +
+                     labels = c("21-09","21-10","21-11","21-12","22-01","22-02"),
+                     guide = guide_axis(angle = -45)) +
   theme_bw() +
-  labs( x="Month", y= "Percent Change Due to Culvert Removal", title="Effect of Construction in Padden") +
-  scale_color_discrete(type = colorPal)) + 
-    scale_x_discrete(guide = guide_axis(angle = -45))
+  labs( x="Date (YY-MM)", y= "Percent Change Due to Culvert Removal", title="Effect of Construction in Padden") +
+  scale_color_discrete(type = colorPal)) 
 
- # ggsave(construction_effect, file = here("Output/Figures/20221123_Construction_effect.png"))
+ # ggsave(construction_effect, file = here("Output/Figures/20221129_Construction_effect.png"))
 
 ```
 
@@ -289,27 +286,29 @@ delta <- f %>% select(newtime, time_idx) %>%
   
   (culvert_effect <-  delta %>% 
       filter(mean_est > 2) %>% #Filter out very low-conc observations, because ratios make these misleading 
-      ggplot(aes(x = as.factor(month), y = delta_mean_pct)) +
+      ggplot(aes(x = newtime, y = delta_mean_pct)) +
       geom_boxplot(fill = "grey") +
       geom_hline(yintercept=0, color="grey") +
-      xlab("Month") + ylab("Mean difference upstream - downstream \n(% of downstream concentration)") +
-      theme_bw()
+      xlab("Date (YY-MM)") + ylab("Mean difference upstream - downstream \n(% of downstream concentration)") +
+      theme_bw() + 
+      scale_x_discrete(guide = guide_axis(angle = -45))
       )  #here, just taking means, and summarizing across species and creeks w boxplot
   
- # ggsave(culvert_effect, file = here("Output/Figures/20221123_culvert_effect_flowcorrected.png"))
+ # ggsave(culvert_effect, file = here("Output/Figures/20221129_culvert_effect_flowcorrected.png"))
 
   (culvert_effect_creek_species <-  delta %>% 
       filter(mean_est > 2) %>% #Filter out very low-conc observations, because ratios make these misleading 
       drop_na() %>%
       mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum')))%>% 
-      ggplot(aes(x = as.factor(month), y = delta_mean_pct)) +
+      ggplot(aes(x = newtime, y = delta_mean_pct)) +
       geom_point() +
       geom_hline(yintercept=0, color="grey") +
       facet_grid(facetorder~species, scales="free") +
-      xlab("Month") + ylab("Mean difference upstream - downstream \n(% of downstream concentration)") +
-      theme_bw()
+      xlab("Date (YY-MM)") + ylab("Mean difference upstream - downstream \n(% of downstream concentration)") +
+      theme_bw() + 
+      scale_x_discrete(guide = guide_axis(angle = -45))
   )
   
-  # ggsave(culvert_effect_creek_species, file = here("Output/SupplementalFigures/20221123_culvert_effect_creek_species_flowcorrected.png"))
+  # ggsave(culvert_effect_creek_species, file = here("Output/SupplementalFigures/20221129_culvert_effect_creek_species_flowcorrected.png"))
   
 ```
