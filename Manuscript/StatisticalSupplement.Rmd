@@ -1,29 +1,8 @@
 ---
-title: "Quantifying Impacts of an Environmental Intervention Using Environmental DNA: Supplemental Text 2"
-author: 
-- Elizabeth Andruszkiewicz Allan, 
-- Ryan P. Kelly, 
-- Erin D'Agnese, 
-- Maya Garber-Yonts,
-- Megan Shaffer,
-- Zachary Gold,
-- Andrew O. Shelton 
-date: '2022'
-output:
-  pdf_document:
-    fig_caption: yes
-    keep_tex: yes
-    latex_engine: pdflatex
-    number_sections: no
-    extra_dependencies: ["float"]
-  word_document: default
-header-includes:
-- \usepackage{lineno}
-- \linenumbers
-- \usepackage{setspace}\doublespacing
-- \usepackage{gensymb}
-bibliography: references.bib
-csl: ecological-applications.csl
+title: "Statistical Supplement -- Salmon Culverts"
+author: "NGN Team"
+date: "2022-10-11"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -40,15 +19,19 @@ options(mc.cores = parallel::detectCores())
 
 Our analysis depends upon a set of quantitative models, each linking our observations of metabarcoding reads or qPCR cycle-threshold values to an underlying concentration of target-species DNA in water samples.
 
-In summary, we (1) use a mock community with a known composition to calibrate our environmental metabarcoding data as described in Shelton et al. 2022. The result is a set of estimated proportions of DNA from each species in each sample. We then (2) relate qPCR cycle-threshold values for a reference species (here, *O. clarkii*) from the same set of samples to a standard curve to yield quantitative estimates of the concentration of our reference species in each sample. We (3) use these absolute estimates of DNA concentration to expand the metabarcoding-derived proportion data into a complete set of quantitative estimates of DNA concentrations for each species in each sample. Finally, we (4) construct a time-series model for these species-specific concentrations, sharing information across creeks and time-points. This allows us to interpolate unobserved data points and more important, to compare our observations to the (counterfactual) expecations for species' DNA concentrations in the absence of a construction project. We detail the statistical details of these steps below.
+In summary, we (1) use a mock community with a known composition to calibrate our environmental metabarcoding data as described in Shelton et al. 2022. The result is a set of estimated proportions of DNA from each species in each sample. We then (2) relate qPCR cycle-threshold values for a reference species (here, *O. clarkii*) from the same set of samples to a standard curve to yield quantitative estimates of the concentration of our reference species in each sample. We (3) use these absolute estimates of DNA concentration to expand the metabarcoding-derived proportion data into a complete set of quantitative estimates of DNA concentrations for each species in each sample. We account for the variable water-flow-rates of the sampled creeks by converting these concentrations from units of copies/L into units of copies/s, given an flow rate in L/s. Finally, we (4) construct a time-series model for these species-specific concentrations, sharing information across creeks and time-points. This allows us to interpolate unobserved data points and more important, to compare our observations to the (counterfactual) expecations for species' DNA concentrations in the absence of a construction project. We detail the statistical details of these steps below.
 
 ## Calibration with a Mock Community
 
-See [@shelton; @mclaren2019; @silverman2021]. Ran each creek individually for better convergence.
+See Shelton et al. 2022; McLaren et al; Silverman et al
+
+For ease of computation, we ran the metabarcoding-calibration model on data for each of our five creeks separately, using the same mock communities to calibratte each.
+
+Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.02$
 
 ## qPCR Calibration
 
-See [@shelton2019] and [@mccall2014] for similar analyses.
+See Shelton et al. 2019; McCall et al. 2014 (<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4133581/>)
 
 For all samples $i$, on qPCR plates $j$, we either observe ($z_{i,j} = 0$ or do not observe $z_{i,j} = 1$) amplification; we omit the subscripts $i$ and $j$ from the following description except where necessary for clarity. We assume an intercept of zero.
 
@@ -75,7 +58,7 @@ y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{    if } z_{i,j} = 1 \\
 \gamma_{0} \sim normal(-2,1)
 \end{gather*}
 ```
-![Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/SupplementalFigures/qPCR_calibration_supplemental.png)
+![FIGSX_qPCR_calibration: Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/Figures/qPCR_calibration_supplemental.png)
 
 Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.002$.
 
@@ -85,13 +68,15 @@ As described in the main text, calibrated metabarcoding analysis yielded quantit
 
 We then converted these proportions into absolute abundances by expansion, in light of the qPCR results for our reference species *O. clarkii*. We estimated the total amplifiable salmonid DNA in environmental sample $i$ as $DNA_{salmonid_{i}} = \frac{[qPCR_{reference_{i}}]}{Proportion_{reference_{i}}}$, and then expanded species' proportions into absolute concentrations by multiplying these sample-specific total concentrations by individual species' proportions, such that for species $j$ in sample $i$, $DNA_{i,j} = DNA_{salmonid_{i}} * Proportion_{i,j}$.
 
-See [@pont2022]; McClaren 2022 pre-print
+[See Pont et al. 2022; McClaren 2022 pre-print for examples of similar expansions].
+
+We transformed the resulting abundances to account for the creeks' flow-rates as described in the main text.
 
 ## Time-Series Model
 
-At a given station in a given creek, there is some distribution of DNA concentration for a species. For simplicity, we focus on a single species and a single station (downstream or upstream) for the moment.
+At a given station in a given creek, some DNA concentration exists for each species. For simplicity, we focus on a single species and a single station (downstream or upstream) for the moment.
 
-The (log) DNA concentration in creek $i$ at time $t$ is distributed as $Y_{i,t} \sim \mathcal{N}(\mu_{i,t},\,\sigma^{2})$. We may choose to let $\sigma$ vary across creeks, time points, or with a covariate such as creek flow.
+Our observations of the (log) DNA concentration in creek $i$ at time $t$ are distributed as $Y_{i,t} \sim \mathcal{N}(\mu_{i,t},\,\sigma^{2})$. More complex versions of the model may let $\sigma$ vary across creeks, time points, species, or with environmental covariates of interest.
 
 We are interested in how the DNA concentration changes over time, so we assert that the expected value of DNA in a creek at time $t$, $\mu_{i,t}$, depends upon its value in the previous time step $t-1$, in some way. Further, we can let $\mu_{i,t}$ in, say, our focal Padden creek, depend upon the observations in other creeks (i.e., where creek $i \neq \text{Padden}$) if we think that similar environmental and demographic forces are affecting all creeks in similar ways. We can use these inferences to model data we cannot observe directly -- namely, a counterfactual scenario in which a human intervention did not occur -- to estimate the effect of that intervention.
 
@@ -109,9 +94,9 @@ where the slope term, $\beta$, is shared across creeks for a given time point.
 
 We can add observations from many species and from the two stations per creek -- upstream and downstream of the culvert -- simply by adding subscripts to the model. If we let $d$ be a subscript indicating station ($d = 1 \text{ if downstream, } d = 2 \text{ if upstream}$), and let $j$ be a subscript indicating species across the same set of samples, we have a single overall model of the change in eDNA concentration among species, creeks, timepoints, and stations.
 
-We then add a term, $\gamma$, to explicitly estimate the effect of culvert removal. We index $\gamma$ with an index $r$ reflecting the state of a creek as either being in its undisturbed state ($r = 1$) or else subject to restoration ($r = 2$; only Padden Creek has this designation, and only after October 2021). We estimate $\gamma$ for each species $j$ and each timepoint $t$.
+We then add a term, $\gamma$, to explicitly estimate the effect of culvert removal. We index $\gamma$ with $r$ reflecting the state of a creek as either being in its non-restored state ($r = 1$) or else subject to restoration ($r = 2$; only Padden Creek has this designation, and only after September 2021). We define $\gamma_{r = 1} = 0$ for all species and timepoints, such that we can interpret $\gamma_{r = 2}$ as the effect of restoration (relative to a non-restored state) on each species $j$ at each timepoint $t$.
 
-Finally, we add a term, $\eta$, to capture the additional variation in DNA concentration not otherwise explained by the autocorrelation element of the model. Differences between $\eta$ for upstream and downstream stations within a set of time/creek/species observations reflect a combination of differences due to the culvert itself and random process variation.
+Finally, an error term, $\eta$, captures the additional variation in DNA concentration not otherwise explained by the autocorrelation element of the model. Differences between $\eta$ for upstream and downstream stations within a set of time/creek/station/species observations reflect a combination of differences due to the culvert itself and random process variation.
 
 We complete the model by specifying the prior distributions from which each parameter is drawn, selecting weakly informative priors for each parameter.
 
@@ -138,8 +123,4 @@ The $\eta$ term gives us a way of estimating the effects of the culverts themsel
 
 This model shares enough information across time points (within a creek) and across creeks (within a time point) that we can use it to infer DNA concentrations that we do not actually observe -- we treat the temporal/spatial points to be inferred as missing data, parameters to be estimated by the larger model.
 
-[insert example figure]
-
-Model Diagnostics: 3 chains, 2500 iterations, for all parameters, <!-- $\hat{R} \leq 1.002$. -->
-
-## References
+Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.02$
