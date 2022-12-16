@@ -10,13 +10,13 @@ author:
 - Andrew O. Shelton 
 date: '2022'
 output:
+  word_document: default
   pdf_document:
     fig_caption: yes
     keep_tex: yes
     latex_engine: pdflatex
     number_sections: no
     extra_dependencies: ["float"]
-  word_document: default
 header-includes:
 - \usepackage{lineno}
 - \linenumbers
@@ -40,11 +40,11 @@ options(mc.cores = parallel::detectCores())
 
 Our analysis depends upon a set of quantitative models, each linking our observations of metabarcoding reads or qPCR cycle-threshold values to an underlying concentration of target-species DNA in water samples.
 
-In summary, we (1) use a mock community with a known composition to calibrate our environmental metabarcoding data as described in Shelton et al. 2022. The result is a set of estimated proportions of DNA from each species in each sample. We then (2) relate qPCR cycle-threshold values for a reference species (here, *O. clarkii*) from the same set of samples to a standard curve to yield quantitative estimates of the concentration of our reference species in each sample. We (3) use these absolute estimates of DNA concentration to expand the metabarcoding-derived proportion data into a complete set of quantitative estimates of DNA concentrations for each species in each sample. We account for the variable water-flow-rates of the sampled creeks by converting these concentrations from units of copies/L into units of copies/s, given an flow rate in L/s. Finally, we (4) construct a time-series model for these species-specific concentrations, sharing information across creeks and time-points. This allows us to interpolate unobserved data points and more important, to compare our observations to the (counterfactual) expecations for species' DNA concentrations in the absence of a construction project. We detail the statistical details of these steps below.
+In summary, we (1) use a mock community with a known composition to calibrate our environmental metabarcoding data as described in @shelton. The result is a set of estimated proportions of DNA from each species in each sample. We then (2) relate qPCR cycle-threshold values for a reference species (here, *O. clarkii*) from the same set of samples to a standard curve to yield quantitative estimates of the concentration of our reference species in each sample. We (3) use these absolute estimates of DNA concentration to expand the metabarcoding-derived proportion data into a complete set of quantitative estimates of DNA concentrations for each species in each sample. We account for the variable water-flow-rates of the sampled creeks by converting these concentrations from units of copies/L into units of copies/s, given an flow rate in L/s. Finally, we (4) construct a time-series model for these species-specific concentrations, sharing information across creeks and time-points. This allows us to interpolate unobserved data points and more important, to compare our observations to the (counterfactual) expecations for species' DNA concentrations in the absence of a construction project. We detail the statistical details of these steps below.
 
 ## Calibration with a Mock Community
 
-See [@shelton; @mclaren2019; @silverman2021].
+See @shelton; @mclaren2019; @silverman2021.
 
 For ease of computation, we ran the metabarcoding-calibration model on data for each of our five creeks separately, using the same mock communities to calibrate each.
 
@@ -52,7 +52,7 @@ Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 
 
 ## qPCR Calibration
 
-See [@shelton2019a; @mccall2014].
+See @shelton2019; @mccall2014.
 
 For all samples $i$, on qPCR plates $j$, we either observe ($z_{i,j} = 0$ or do not observe $z_{i,j} = 1$) amplification; we omit the subscripts $i$ and $j$ from the following description except where necessary for clarity. We assume an intercept of zero.
 
@@ -79,7 +79,7 @@ y_{i,j} \sim normal(\mu_{i,j}, \sigma_{i,j})   \text{    if } z_{i,j} = 1 \\
 \gamma_{0} \sim normal(-2,1)
 \end{gather*}
 ```
-![FIGSX_qPCR_calibration: Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/SupplementalFigures/qPCR_calibration_supplemental.png)
+![Example of 2500 samples from the joint posterior distribution of the model fit for a single representative qPCR plate. Red dots are standard-curve observations with known starting concentrations. The spread of black dots (posterior samples) indicates the shape of the calibration curve, with standard deviation increasing as concentration decreases.](../Output/SupplementalFigures/qPCR_calibration_supplemental.png)
 
 Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 1.002$.
 
@@ -87,9 +87,11 @@ Model Diagnostics: 3 chains, 2500 iterations, for all parameters, $\hat{R} \leq 
 
 As described in the main text, calibrated metabarcoding analysis yielded quantitative estimates of the proportions of species' DNA in environmental samples prior to PCR.
 
+<!-- ADD RANGE OF SD FOR POSTERIOR ESTIMATES TO SAY ITS FINE THAT WE JUST USE QPCR MODEL OUTPUT AND QM MODEL OUTPUT AS TIME SERIES OUTPUT -->
+
 We then converted these proportions into absolute abundances by expansion, in light of the qPCR results for our reference species *O. clarkii*. We estimated the total amplifiable salmonid DNA in environmental sample $i$ as $DNA_{salmonid_{i}} = \frac{[qPCR_{reference_{i}}]}{Proportion_{reference_{i}}}$, and then expanded species' proportions into absolute concentrations by multiplying these sample-specific total concentrations by individual species' proportions, such that for species $j$ in sample $i$, $DNA_{i,j} = DNA_{salmonid_{i}} * Proportion_{i,j}$.
 
-[See Pont et al. 2022; McClaren 2022 pre-print for examples of similar expansions].
+See Pont et al. 2022; McClaren 2022 pre-print for examples of similar expansions.
 
 We transformed the resulting abundances to account for the creeks' flow-rates as described in the main text.
 

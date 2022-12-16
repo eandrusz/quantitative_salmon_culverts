@@ -10,13 +10,13 @@ author:
 - Andrew O. Shelton 
 date: '2022'
 output:
+  word_document: default
   pdf_document:
     fig_caption: yes
     keep_tex: yes
     latex_engine: pdflatex
     number_sections: no
     extra_dependencies: ["float"]
-  word_document: default
 header-includes:
 - \usepackage{lineno}
 - \linenumbers

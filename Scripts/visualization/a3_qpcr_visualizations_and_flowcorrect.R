@@ -104,11 +104,11 @@ cut_modeled_conc %>%
                            TRUE ~ creek)) %>% 
   mutate(station = case_when(station == "Dn" ~ "Down",
                            TRUE ~ station)) %>% 
-  ggplot(aes(x = newtime, y = log10(mean_concentration_est))) +
+  ggplot(aes(x = newtime, y = log(mean_concentration_est))) +
   geom_point() +
-  geom_segment(aes(x = newtime, xend = newtime, y = log10(ci25_concentration_est), yend = log10(ci75_concentration_est))) +
+  geom_segment(aes(x = newtime, xend = newtime, y = log(ci25_concentration_est), yend = log(ci75_concentration_est))) +
   facet_grid(~creek~station) +
-  labs(x="Date (YY-MM)", y= "Log10 copies/L water", title = "Cutthroat Trout") + 
+  labs(x="Date (YY-MM)", y= "Log copies/L water", title = "Cutthroat Trout") + 
   theme_bw() + 
   scale_x_discrete(guide = guide_axis(angle = -45))
 
@@ -134,11 +134,11 @@ cut_modeled_conc %>%
   mutate(station = case_when(station == "Dn" ~ "Down",
                              TRUE ~ station)) %>% 
   mutate(facetorder = factor(creek, levels=c('Padden','Portage','Chuckanut','Squalicum', 'Barnes')))%>% 
-  ggplot(aes(x = newtime, y = log10(mean_concentration_est), color=station)) +
+  ggplot(aes(x = newtime, y = log(mean_concentration_est), color=station)) +
   geom_point() +
-  geom_segment(aes(x = newtime, xend = newtime, y = log10(ci25_concentration_est), yend = log10(ci75_concentration_est))) +
+  geom_segment(aes(x = newtime, xend = newtime, y = log(ci25_concentration_est), yend = log(ci75_concentration_est))) +
   facet_grid(rows=vars(facetorder)) +
-  labs(x="Date (YY-MM)", y= "Log10 copies/L water", title = "Cutthroat Trout", color="Station") + 
+  labs(x="Date (YY-MM)", y= "Log copies/L water", title = "Cutthroat Trout", color="Station") + 
   theme_bw() + 
   scale_x_discrete(guide = guide_axis(angle = -45)) +
   scale_color_manual(values=c("darkgrey", "black"))
